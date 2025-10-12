@@ -1,0 +1,34 @@
+{
+    "name": "thetheago/laravel-seeder-versioning",
+    "description": "Seeder versioning system for Laravel (like migrations)",
+    "type": "library",
+    "keywords": ["laravel", "seeders", "versioning", "database"],
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Thetheago\\SeederVersioning\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Thiago",
+            "email": "theago.dev@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Thetheago\\SeederVersioning\\SeederVersioningServiceProvider"
+            ],
+            "aliases": {
+                "SeederVersioning": "Thetheago\\SeederVersioning\\Facades\\SeederVersioning"
+            }
+        }
+    },
+    "require": {
+        "php": ">=8.3",
+        "illuminate/support": "^12.0"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
