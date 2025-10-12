@@ -18,18 +18,21 @@ class SeederVersioningService
         $this->app = $app;
     }
 
-    public function runVersionedSeeders(): void
+    /**
+     * @param bool $hashOnly If true, just generate and fill the table without running the migrations
+     */
+    public function runVersionedSeeders(bool $hashOnly = false): void
     {
         $path = config('seeder-versioning.path', database_path('seeders'));
 
-        if (! File::exists($path)) {
+        if (!File::exists($path)) {
             return;
         }
 
         $files = File::files($path);
 
         foreach ($files as $file) {
-            if (! Str::endsWith($file->getFilename(), '.php')) {
+            if (!Str::endsWith($file->getFilename(), '.php')) {
                 continue;
             }
 
@@ -38,8 +41,11 @@ class SeederVersioningService
 
             $existing = DB::table($this->table)->where('seeder', $seeder)->first();
 
-            if (! $existing) {
-                $this->runSeeder($seeder, $file->getPathname());
+            if (!$existing) {
+                if (!$hashOnly) {
+                    $this->runSeeder($seeder, $file->getPathname());
+                }
+
                 DB::table($this->table)->insert([
                     'seeder' => $seeder,
                     'hash' => $hash,
@@ -49,7 +55,10 @@ class SeederVersioningService
             }
 
             if ($existing->hash !== $hash) {
-                $this->runSeeder($seeder, $file->getPathname());
+                if (!$hashOnly) {
+                    $this->runSeeder($seeder, $file->getPathname());
+                }
+
                 DB::table($this->table)->where('seeder', $seeder)->update([
                     'hash' => $hash,
                     'ran_at' => now(),
@@ -70,11 +79,11 @@ class SeederVersioningService
 
     protected function runSeeder(string $class, string $path): void
     {
-        if (! class_exists($class)) {
+        if (!class_exists($class)) {
             require_once $path;
         }
 
-        if (! class_exists($class)) {
+        if (!class_exists($class)) {
             $fallBackPath = "Database\\Seeders\\{$class}";
             if (class_exists($fallBackPath)) {
                 $class = $fallBackPath;

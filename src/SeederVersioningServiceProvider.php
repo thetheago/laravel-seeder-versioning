@@ -24,11 +24,8 @@ class SeederVersioningServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 __DIR__ . '/../config/seeder-versioning.php' => config_path('seeder-versioning.php'),
-            ], 'config');
-
-            $this->publishes([
                 __DIR__ . '/../database/migrations/' => database_path('migrations'),
-            ], 'migrations');
+            ], 'seeder-versioning');
         }
     }
 }
