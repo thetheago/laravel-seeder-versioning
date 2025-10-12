@@ -3,6 +3,7 @@
 namespace Thetheago\SeederVersioning;
 
 use Illuminate\Support\ServiceProvider;
+use Thetheago\SeederVersioning\Services\SeederVersioningService;
 
 class SeederVersioningServiceProvider extends ServiceProvider
 {
@@ -12,6 +13,7 @@ class SeederVersioningServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/seeder-versioning.php', 'seeder-versioning');
+        $this->app->singleton(Services\SeederVersioningService::class, SeederVersioningService::class);
     }
 
     /**

@@ -9,7 +9,7 @@ return new class extends Migration {
     {
         Schema::create(config('seeder-versioning.table', 'seeder_versions'), function (Blueprint $table) {
             $table->id();
-            $table->string('class')->unique();
+            $table->string('seeder')->unique();
             $table->string('hash', 64);
             $table->timestamp('ran_at');
         });
