@@ -2,10 +2,13 @@
 
 namespace Thetheago\SeederVersioning\Services;
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class SeederVersioningService
 {
@@ -16,6 +19,46 @@ class SeederVersioningService
     {
         $this->table = config('seeder-versioning.table', 'seeder_versions');
         $this->app = $app;
+    }
+
+    /**
+     * @throws RuntimeException
+     */
+    public function ensureSetup(): void
+    {
+        $configPath = config_path('seeder-versioning.php');
+
+        if (! File::exists($configPath)) {
+            throw new RuntimeException(
+                "Config file not found {$configPath}. " .
+                "Execute: php artisan vendor:publish --tag=seeder-versioning"
+            );
+        }
+
+        if (! Schema::hasTable('seeder_versions')) {
+            $this->runSeederVersionMigration();
+
+            if (! Schema::hasTable('seeder_versions')) {
+                throw new RuntimeException(
+                    "Fail while creating 'seeder_versions' table."
+                );
+            }
+        }
+    }
+
+    protected function runSeederVersionMigration(): void
+    {
+        $migrationFile = __DIR__ . '/../../database/migrations/2025_10_13_000000_create_seeder_versions_table.php';
+
+        if (! File::exists($migrationFile)) {
+            throw new RuntimeException("Migration {$migrationFile} dont found in package.");
+        }
+
+        Artisan::call('migrate', [
+            '--path' => $migrationFile,
+            '--realpath' => true,
+            '--force' => true,
+        ]);
     }
 
     /**

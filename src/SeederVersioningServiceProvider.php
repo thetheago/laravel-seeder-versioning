@@ -23,11 +23,6 @@ class SeederVersioningServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->publishes([
-                __DIR__ . '/../config/seeder-versioning.php' => config_path('seeder-versioning.php'),
-                __DIR__ . '/../database/migrations/' => database_path('migrations'),
-            ], 'seeder-versioning');
-
             $this->commands([
                 SeederMigrateCommand::class,
             ]);
