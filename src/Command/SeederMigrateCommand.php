@@ -5,7 +5,7 @@ namespace Thetheago\SeederVersioning\Command;
 use Illuminate\Console\Command;
 use Thetheago\SeederVersioning\Facades\SeederVersioning;
 
-class SeedVersionedCommand extends Command
+class SeederMigrateCommand extends Command
 {
     protected $signature = 'seed:migrate
                             {--hash-only : Just generate the hash of migrations, without running them.}';

@@ -3,6 +3,7 @@
 namespace Thetheago\SeederVersioning;
 
 use Illuminate\Support\ServiceProvider;
+use Thetheago\SeederVersioning\Command\SeederMigrateCommand;
 use Thetheago\SeederVersioning\Services\SeederVersioningService;
 
 class SeederVersioningServiceProvider extends ServiceProvider
@@ -26,6 +27,10 @@ class SeederVersioningServiceProvider extends ServiceProvider
                 __DIR__ . '/../config/seeder-versioning.php' => config_path('seeder-versioning.php'),
                 __DIR__ . '/../database/migrations/' => database_path('migrations'),
             ], 'seeder-versioning');
+
+            $this->commands([
+                SeederMigrateCommand::class,
+            ]);
         }
     }
 }

@@ -71,8 +71,8 @@ class SeederVersioningService
     {
         $content = File::get($path);
 
-        $normalized = preg_replace('/\/\/.*|\/\*.*?\*\//s', '', $content);
-        $normalized = preg_replace('/\s+/', '', $normalized);
+        $normalized = preg_replace('/\s+/', ' ', $content);
+        $normalized = trim($normalized);
 
         return hash('sha256', $normalized);
     }
