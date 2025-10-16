@@ -46,9 +46,9 @@ class SeederVersioningService
         }
     }
 
-    protected function runSeederVersionMigration(): void
+    public function runSeederVersionMigration(): void
     {
-        $migrationFile = __DIR__ . '/../../database/migrations/2025_10_13_000000_create_seeder_versions_table.php';
+        $migrationFile = __DIR__ . '/../../database/migrations/2025_01_01_000000_create_seeder_versions_table.php';
 
         if (! File::exists($migrationFile)) {
             throw new RuntimeException("Migration {$migrationFile} dont found in package.");
@@ -120,19 +120,8 @@ class SeederVersioningService
         return hash('sha256', $normalized);
     }
 
-    protected function runSeeder(string $class, string $path): void
+    public function runSeeder(string $class): void
     {
-        if (!class_exists($class)) {
-            require_once $path;
-        }
-
-        if (!class_exists($class)) {
-            $fallBackPath = "Database\\Seeders\\{$class}";
-            if (class_exists($fallBackPath)) {
-                $class = $fallBackPath;
-            }
-        }
-
         $instance = app($class);
         if (is_object($instance) && method_exists($instance, 'run')) {
             $instance->run();
