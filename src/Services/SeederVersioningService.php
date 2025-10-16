@@ -9,16 +9,20 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use RuntimeException;
+use SplFileInfo;
 
 class SeederVersioningService
 {
     protected string $table;
     protected Application $app;
 
-    public function __construct(Application $app)
+    protected SeederRunner $seederRunner;
+
+    public function __construct(Application $app, SeederRunner $seederRunner)
     {
         $this->table = config('seeder-versioning.table', 'seeder_versions');
         $this->app = $app;
+        $this->seederRunner = $seederRunner;
     }
 
     /**
@@ -37,22 +41,12 @@ class SeederVersioningService
 
         if (! Schema::hasTable('seeder_versions')) {
             $this->runSeederVersionMigration();
-
-            if (! Schema::hasTable('seeder_versions')) {
-                throw new RuntimeException(
-                    "Fail while creating 'seeder_versions' table."
-                );
-            }
         }
     }
 
     public function runSeederVersionMigration(): void
     {
         $migrationFile = __DIR__ . '/../../database/migrations/2025_01_01_000000_create_seeder_versions_table.php';
-
-        if (! File::exists($migrationFile)) {
-            throw new RuntimeException("Migration {$migrationFile} dont found in package.");
-        }
 
         Artisan::call('migrate', [
             '--path' => $migrationFile,
@@ -79,18 +73,19 @@ class SeederVersioningService
                 continue;
             }
 
-            $seeder = pathinfo($file->getFilename(), PATHINFO_FILENAME);
+            $seeder = $this->resolveSeederClass($file);
+            $seederName = $file->getFilenameWithoutExtension();
             $hash = $this->calculateHash($file->getPathname());
 
-            $existing = DB::table($this->table)->where('seeder', $seeder)->first();
+            $existing = DB::table($this->table)->where('seeder', $seederName)->first();
 
             if (!$existing) {
                 if (!$hashOnly) {
-                    $this->runSeeder($seeder, $file->getPathname());
+                    $this->seederRunner::run($seeder);
                 }
 
                 DB::table($this->table)->insert([
-                    'seeder' => $seeder,
+                    'seeder' => $seederName,
                     'hash' => $hash,
                     'ran_at' => now(),
                 ]);
@@ -99,15 +94,52 @@ class SeederVersioningService
 
             if ($existing->hash !== $hash) {
                 if (!$hashOnly) {
-                    $this->runSeeder($seeder, $file->getPathname());
+                    $this->seederRunner::run($seeder);
                 }
 
-                DB::table($this->table)->where('seeder', $seeder)->update([
+                DB::table($this->table)->where('seeder', $seederName)->update([
                     'hash' => $hash,
                     'ran_at' => now(),
                 ]);
             }
         }
+    }
+
+    protected function resolveSeederClass(SplFileInfo $file): string
+    {
+        $fileName = $file->getFilename();
+
+        if (class_exists($fileName)) {
+            return $fileName;
+        }
+
+        $filePath = $file->getPathname();
+
+        $contents = File::get($filePath);
+
+        if (preg_match('/^namespace\s+(.+?);/m', $contents, $matches)) {
+            $namespace = $matches[1];
+        } else {
+            $namespace = null;
+        }
+
+        if (preg_match('/class\s+(\w+)/', $contents, $matches)) {
+            $className = $matches[1];
+        } else {
+            throw new RuntimeException("No class found in file: {$filePath}");
+        }
+
+        $fullClass = $namespace ? $namespace . '\\' . $className : $className;
+
+        if (! class_exists($fullClass)) {
+            require_once $filePath;
+        }
+
+        if (! class_exists($fullClass)) {
+            throw new RuntimeException("Seeder class {$fullClass} could not be loaded from {$filePath}");
+        }
+
+        return $fullClass;
     }
 
     protected function calculateHash(string $path): string
@@ -118,13 +150,5 @@ class SeederVersioningService
         $normalized = trim($normalized);
 
         return hash('sha256', $normalized);
-    }
-
-    public function runSeeder(string $class): void
-    {
-        $instance = app($class);
-        if (is_object($instance) && method_exists($instance, 'run')) {
-            $instance->run();
-        }
     }
 }

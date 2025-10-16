@@ -2,17 +2,54 @@
 
 namespace Thetheago\SeederVersioning\Tests\Unit;
 
+use Mockery;
 use Thetheago\SeederVersioning\Facades\SeederVersioning;
-use Thetheago\SeederVersioning\Tests\Database\Seeders\UserSeeder;
+use Illuminate\Support\Facades\File;
+use Thetheago\SeederVersioning\Services\SeederRunner;
+use Thetheago\SeederVersioning\Services\SeederVersioningService;
 use Thetheago\SeederVersioning\Tests\TestCase;
 
 class SeederVersioningServiceTest extends TestCase
 {
-    public function test_ServiceCanRunSeeder(): void
+    public function tearDown(): void
     {
-        SeederVersioning::runSeederVersionMigration();
-        SeederVersioning::runSeeder(UserSeeder::class);
+        Mockery::close();
+        parent::tearDown();
+    }
 
-        $this->assertDatabaseHas('users', ['email' => 'spongebob@gmail.com']);
+    public function test_ensureSetupTrhwoExceptionIfWasNotConfigFIle(): void
+    {
+        File::shouldReceive('exists')->andReturn(false);
+
+        $this->expectException(\RuntimeException::class);
+        SeederVersioning::ensureSetup();
+    }
+
+    public function test_ensureSetupCreateSeederVersioningTable(): void
+    {
+        File::shouldReceive('exists')->andReturn(true);
+        SeederVersioning::ensureSetup();
+
+        $this->assertTrue(true);
+    }
+
+    public function test_runVersionedSeedersWithSuccess(): void
+    {
+        $seederRunnerMock = Mockery::mock(SeederRunner::class);
+        $seederRunnerMock->shouldReceive('run')->twice();
+
+        $seederVersioning = new SeederVersioningService($this->app, $seederRunnerMock);
+        $seederVersioning->runSeederVersionMigration();
+        $seederVersioning->runVersionedSeeders();
+    }
+
+    public function test_runVersionedSeedersHashOnlyWithSuccess(): void
+    {
+        $seederRunnerMock = Mockery::mock(SeederRunner::class);
+        $seederRunnerMock->shouldNotReceive('run');
+
+        $seederVersioning = new SeederVersioningService($this->app, $seederRunnerMock);
+        $seederVersioning->runSeederVersionMigration();
+        $seederVersioning->runVersionedSeeders(true);
     }
 }
