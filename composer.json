@@ -9,6 +9,11 @@
             "Thetheago\\SeederVersioning\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Thetheago\\SeederVersioning\\Tests\\": "tests/"
+        }
+    },
     "authors": [
         {
             "name": "Thiago",
@@ -29,6 +34,10 @@
         "php": ">=8.3",
         "illuminate/support": "^12.0"
     },
-    "minimum-stability": "stable",
+    "require-dev": {
+        "orchestra/testbench": "^10.0",
+        "phpunit/phpunit": "^12.0"
+    },
+    "minimum-stability": "dev",
     "prefer-stable": true
 }
