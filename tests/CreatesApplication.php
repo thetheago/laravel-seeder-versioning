@@ -9,6 +9,8 @@ use Thetheago\SeederVersioning\Tests\Database\Migrations\UsersMigration;
 
 class CreatesApplication extends Orchestra
 {
+    protected $table;
+
     protected function getPackageProviders($app): array
     {
         return [
@@ -27,6 +29,7 @@ class CreatesApplication extends Orchestra
 
         $app['config']->set('seeder-versioning.path', __DIR__ . '/Database/Seeders');
         $app['config']->set('seeder-versioning.table', 'seeder_versions');
+        $this->table = 'seeder_versions';
     }
 
     protected function runTestMigrations(): void

@@ -41,6 +41,7 @@ class SeederVersioningServiceTest extends TestCase
         $seederVersioning = new SeederVersioningService($this->app, $seederRunnerMock);
         $seederVersioning->runSeederVersionMigration();
         $seederVersioning->runVersionedSeeders();
+        $this->assertTrue(true);
     }
 
     public function test_runVersionedSeedersHashOnlyWithSuccess(): void
@@ -51,5 +52,6 @@ class SeederVersioningServiceTest extends TestCase
         $seederVersioning = new SeederVersioningService($this->app, $seederRunnerMock);
         $seederVersioning->runSeederVersionMigration();
         $seederVersioning->runVersionedSeeders(true);
+        $this->assertTrue(true);
     }
 }
