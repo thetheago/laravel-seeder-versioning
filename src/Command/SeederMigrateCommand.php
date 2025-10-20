@@ -3,7 +3,6 @@
 namespace Thetheago\SeederVersioning\Command;
 
 use Illuminate\Console\Command;
-use Thetheago\SeederVersioning\Facades\SeederVersioning;
 use Thetheago\SeederVersioning\Services\SeederVersioningService;
 
 class SeederMigrateCommand extends Command
@@ -34,7 +33,7 @@ class SeederMigrateCommand extends Command
             $this->info('Running seeders...');
         }
 
-        SeederVersioning::runVersionedSeeders($hashOnly);
+        $this->service->runVersionedSeeders($hashOnly);
         $this->info('Done.');
         return self::SUCCESS;
     }
