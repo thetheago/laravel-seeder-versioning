@@ -47,7 +47,7 @@ class SeederVersioningServiceTest extends TestCase
     public function test_ensureSameHashedSeederDoesntRunTwice(): void
     {
         $seederRunner = new SeederRunner();
-        $seederVersioning = new SeederVersioningService($this->app, $seederRunner);
+        $seederVersioning = new SeederVersioningService($seederRunner);
         $seederVersioning->runSeederVersionMigration();
         $seederVersioning->runVersionedSeeders();
 
@@ -64,7 +64,7 @@ class SeederVersioningServiceTest extends TestCase
     public function test_ensureRunWhenFileChange(): void
     {
         $seederRunner = new SeederRunner();
-        $seederVersioning = new SeederVersioningService($this->app, $seederRunner);
+        $seederVersioning = new SeederVersioningService($seederRunner);
         $seederVersioning->runSeederVersionMigration();
         $seederVersioning->runVersionedSeeders();
 

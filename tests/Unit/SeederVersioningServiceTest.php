@@ -38,7 +38,7 @@ class SeederVersioningServiceTest extends TestCase
         $seederRunnerMock = Mockery::mock(SeederRunner::class);
         $seederRunnerMock->shouldReceive('run')->twice();
 
-        $seederVersioning = new SeederVersioningService($this->app, $seederRunnerMock);
+        $seederVersioning = new SeederVersioningService($seederRunnerMock);
         $seederVersioning->runSeederVersionMigration();
         $seederVersioning->runVersionedSeeders();
         $this->assertTrue(true);
@@ -49,7 +49,7 @@ class SeederVersioningServiceTest extends TestCase
         $seederRunnerMock = Mockery::mock(SeederRunner::class);
         $seederRunnerMock->shouldNotReceive('run');
 
-        $seederVersioning = new SeederVersioningService($this->app, $seederRunnerMock);
+        $seederVersioning = new SeederVersioningService($seederRunnerMock);
         $seederVersioning->runSeederVersionMigration();
         $seederVersioning->runVersionedSeeders(true);
         $this->assertTrue(true);
@@ -59,7 +59,7 @@ class SeederVersioningServiceTest extends TestCase
     {
         $seederRunnerMock = Mockery::mock(SeederRunner::class);
         $seederRunnerMock->shouldNotReceive('run');
-        $seederVersioning = new SeederVersioningService($this->app, $seederRunnerMock);
+        $seederVersioning = new SeederVersioningService($seederRunnerMock);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('No namespace found in file: '. __DIR__ . '/Stubs/ClassWithoutNamespace.php');
@@ -72,7 +72,7 @@ class SeederVersioningServiceTest extends TestCase
     {
         $seederRunnerMock = Mockery::mock(SeederRunner::class);
         $seederRunnerMock->shouldNotReceive('run');
-        $seederVersioning = new SeederVersioningService($this->app, $seederRunnerMock);
+        $seederVersioning = new SeederVersioningService($seederRunnerMock);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('No class found in file: '. __DIR__ . '/Stubs/ClassWithoutClassName.php');
@@ -87,7 +87,7 @@ class SeederVersioningServiceTest extends TestCase
 
         $seederRunnerMock = Mockery::mock(SeederRunner::class);
         $seederRunnerMock->shouldNotReceive('run');
-        $seederVersioning = new SeederVersioningService($this->app, $seederRunnerMock);
+        $seederVersioning = new SeederVersioningService($seederRunnerMock);
 
         $seederVersioning->runVersionedSeeders();
 

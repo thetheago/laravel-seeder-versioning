@@ -13,14 +13,12 @@ use SplFileInfo;
 class SeederVersioningService
 {
     protected string $table;
-    protected Application $app;
 
     protected SeederRunner $seederRunner;
 
-    public function __construct(Application $app, SeederRunner $seederRunner)
+    public function __construct(SeederRunner $seederRunner)
     {
         $this->table = config('seeder-versioning.table', 'seeder_versions');
-        $this->app = $app;
         $this->seederRunner = $seederRunner;
     }
 
