@@ -4,11 +4,8 @@ namespace Thetheago\SeederVersioning\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use Mockery;
-use Thetheago\SeederVersioning\Facades\SeederVersioning;
-use Illuminate\Support\Facades\File;
 use Thetheago\SeederVersioning\Services\SeederRunner;
 use Thetheago\SeederVersioning\Services\SeederVersioningService;
-use Thetheago\SeederVersioning\Tests\Database\Seeders\UserSeeder;
 use Thetheago\SeederVersioning\Tests\TestCase;
 
 class SeederVersioningServiceTest extends TestCase
@@ -49,17 +46,19 @@ class SeederVersioningServiceTest extends TestCase
 
     public function test_ensureSameHashedSeederDoesntRunTwice(): void
     {
-        $seederRunnerMock = Mockery::mock(SeederRunner::class);
-        $seederRunnerMock->shouldReceive('run')->twice();
-
-        $seederVersioning = new SeederVersioningService($this->app, $seederRunnerMock);
+        $seederRunner = new SeederRunner();
+        $seederVersioning = new SeederVersioningService($this->app, $seederRunner);
         $seederVersioning->runSeederVersionMigration();
         $seederVersioning->runVersionedSeeders();
 
         $this->assertDatabaseHas('seeder_versions', ['seeder' => 'ProductsSeeder']);
         $this->assertDatabaseHas('seeder_versions', ['seeder' => 'UserSeeder']);
-
-        $seederVersioning->runSeederVersionMigration();
+        $this->assertDatabaseCount('users', 2);
+        $userSeederBeforeDetail = DB::table($this->table)->where('seeder', 'UserSeeder')->first();
+        $seederVersioning->runVersionedSeeders();
+        $userSeederAfterDetail = DB::table($this->table)->where('seeder', 'UserSeeder')->first();
+        $this->assertEquals($userSeederBeforeDetail->hash, $userSeederAfterDetail->hash);
+        $this->assertDatabaseCount('users', 2);
     }
 
     public function test_ensureRunWhenFileChange(): void

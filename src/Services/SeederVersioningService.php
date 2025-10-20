@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 use RuntimeException;
 use SplFileInfo;
 
@@ -66,13 +65,10 @@ class SeederVersioningService
             return;
         }
 
+
         $files = File::files($path);
 
         foreach ($files as $file) {
-            if (!Str::endsWith($file->getFilename(), '.php')) {
-                continue;
-            }
-
             $seeder = $this->resolveSeederClass($file);
             $seederName = $file->getFilenameWithoutExtension();
             $hash = $this->calculateHash($file->getPathname());
@@ -105,14 +101,8 @@ class SeederVersioningService
         }
     }
 
-    protected function resolveSeederClass(SplFileInfo $file): string
+    public function resolveSeederClass(SplFileInfo $file): string
     {
-        $fileName = $file->getFilename();
-
-        if (class_exists($fileName)) {
-            return $fileName;
-        }
-
         $filePath = $file->getPathname();
 
         $contents = File::get($filePath);
@@ -120,7 +110,7 @@ class SeederVersioningService
         if (preg_match('/^namespace\s+(.+?);/m', $contents, $matches)) {
             $namespace = $matches[1];
         } else {
-            $namespace = null;
+            throw new RuntimeException("No namespace found in file: {$filePath}");
         }
 
         if (preg_match('/class\s+(\w+)/', $contents, $matches)) {

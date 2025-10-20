@@ -54,4 +54,43 @@ class SeederVersioningServiceTest extends TestCase
         $seederVersioning->runVersionedSeeders(true);
         $this->assertTrue(true);
     }
+
+    public function test_resolveSeederClassShouldThrowExceptionWhenNoNamespaceFound(): void
+    {
+        $seederRunnerMock = Mockery::mock(SeederRunner::class);
+        $seederRunnerMock->shouldNotReceive('run');
+        $seederVersioning = new SeederVersioningService($this->app, $seederRunnerMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('No namespace found in file: '. __DIR__ . '/Stubs/ClassWithoutNamespace.php');
+
+        $files = File::files(__DIR__ . '/Stubs');
+        $seederVersioning->resolveSeederClass($files[1]);
+    }
+
+    public function test_resolveSeederClassShouldThrowExceptionWhenNoClassnameFound() : void
+    {
+        $seederRunnerMock = Mockery::mock(SeederRunner::class);
+        $seederRunnerMock->shouldNotReceive('run');
+        $seederVersioning = new SeederVersioningService($this->app, $seederRunnerMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('No class found in file: '. __DIR__ . '/Stubs/ClassWithoutClassName.php');
+
+        $files = File::files(__DIR__ . '/Stubs');
+        $seederVersioning->resolveSeederClass($files[0]);
+    }
+
+    public function test_runVersionedSeedersShouldSkipIfSeedersDirDoesNotExists(): void
+    {
+        $this->app['config']->set('seeder-versioning.path', __DIR__ . '/Stubs/NonExistentPath');
+
+        $seederRunnerMock = Mockery::mock(SeederRunner::class);
+        $seederRunnerMock->shouldNotReceive('run');
+        $seederVersioning = new SeederVersioningService($this->app, $seederRunnerMock);
+
+        $seederVersioning->runVersionedSeeders();
+
+        $this->assertTrue(true);
+    }
 }
