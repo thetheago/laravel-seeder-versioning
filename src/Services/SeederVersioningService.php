@@ -4,22 +4,23 @@ namespace Thetheago\SeederVersioning\Services;
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 use SplFileInfo;
+use Symfony\Component\Console\Output\ConsoleOutput;
 
 class SeederVersioningService
 {
     protected string $table;
-
     protected SeederRunner $seederRunner;
+    protected ConsoleOutput $output;
 
     public function __construct(SeederRunner $seederRunner)
     {
         $this->table = config('seeder-versioning.table', 'seeder_versions');
         $this->seederRunner = $seederRunner;
+        $this->output = new ConsoleOutput();
     }
 
     /**
@@ -32,11 +33,12 @@ class SeederVersioningService
         if (! File::exists($configPath)) {
             throw new RuntimeException(
                 "Config file not found {$configPath}. " .
-                "Execute: php artisan vendor:publish --tag=seeder-versioning"
+                "Run: php artisan vendor:publish --tag=seeder-versioning"
             );
         }
 
         if (! Schema::hasTable('seeder_versions')) {
+            $this->output->writeln("<fg=yellow>[SeederVersioning] </>Creating table <fg=cyan>{$this->table}</>...");
             $this->runSeederVersionMigration();
         }
     }
@@ -50,21 +52,30 @@ class SeederVersioningService
             '--realpath' => true,
             '--force' => true,
         ]);
+
+        $this->output->writeln("<fg=green>[SeederVersioning] </>Version migration executed successfully.");
     }
 
     /**
-     * @param bool $hashOnly If true, just generate and fill the table without running the migrations
+     * @param bool $hashOnly If true, only generates and fills the table without running the seeders
      */
     public function runVersionedSeeders(bool $hashOnly = false): void
     {
         $path = config('seeder-versioning.path', database_path('seeders'));
 
         if (!File::exists($path)) {
+            $this->output->writeln("<fg=red>[SeederVersioning] </> ⚠️ Seeders directory not found at: <fg=yellow>{$path}</>");
             return;
         }
 
-
         $files = File::files($path);
+
+        if (empty($files)) {
+            $this->output->writeln("<fg=yellow>[SeederVersioning] </> 📭 No seeders found in directory <fg=cyan>{$path}</>.");
+            return;
+        }
+
+        $anySeederRunned = false;
 
         foreach ($files as $file) {
             $seeder = $this->resolveSeederClass($file);
@@ -73,9 +84,12 @@ class SeederVersioningService
 
             $existing = DB::table($this->table)->where('seeder', $seederName)->first();
 
+            // New seeder
             if (!$existing) {
                 if (!$hashOnly) {
+                    $this->output->writeln("<fg=gray> └─ Running new seeder... </> <fg=green>{$seederName}</>");
                     $this->seederRunner::run($seeder);
+                    $anySeederRunned = true;
                 }
 
                 DB::table($this->table)->insert([
@@ -83,19 +97,32 @@ class SeederVersioningService
                     'hash' => $hash,
                     'ran_at' => now(),
                 ]);
+
+                $this->output->writeln("<fg=green> ✔ Seeder registered with hash:</> <fg=cyan>{$hash}</>");
                 continue;
             }
 
+            // Modified seeder
             if ($existing->hash !== $hash) {
+                $this->output->writeln("<fg=yellow>[SeederVersioning] </>Changes detected in seeder <fg=green>{$seederName}</>");
+
                 if (!$hashOnly) {
+                    $this->output->writeln("<fg=gray> └─ Re-running updated seeder...</>");
                     $this->seederRunner::run($seeder);
+                    $anySeederRunned = true;
                 }
 
                 DB::table($this->table)->where('seeder', $seederName)->update([
                     'hash' => $hash,
                     'ran_at' => now(),
                 ]);
+
+                $this->output->writeln("<fg=green> ✔ Seeder updated with new hash:</> <fg=cyan>{$hash}</>");
             }
+        }
+
+        if (! $anySeederRunned) {
+            $this->output->writeln("<fg=yellow>[SeederVersioning] </>No new or modified seeders to execute.");
         }
     }
 
