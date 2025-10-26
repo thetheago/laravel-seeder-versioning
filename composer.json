@@ -1,6 +1,6 @@
 {
     "name": "thetheago/laravel-seeder-versioning",
-    "description": "Seeder versioning system for Laravel (like migrations)",
+    "description": "A Laravel package that provides version control for database seeders, similar to Laravel's migration system. This package tracks which seeders have been run and only executes seeders that have been modified by monitoring class content changes.",
     "type": "library",
     "keywords": ["laravel", "seeders", "versioning", "database"],
     "license": "MIT",
