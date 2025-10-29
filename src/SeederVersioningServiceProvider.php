@@ -28,9 +28,30 @@ class SeederVersioningServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->commands([
-                SeederMigrateCommand::class,
-            ]);
+            $this->registerCommands();
+            $this->registerPublishes();
         }
+    }
+
+    /**
+     * Register the package commands.
+     */
+    protected function registerCommands(): void
+    {
+        $this->commands([
+            SeederMigrateCommand::class,
+        ]);
+    }
+
+    /**
+     * Register the publishable resources.
+     */
+    protected function registerPublishes(): void
+    {
+        $this->publishes([
+            __DIR__ . '/../config/seeder-versioning.php' => config_path('seeder-versioning.php'),
+            __DIR__ . '/../database/migrations/2025_01_01_000000_create_seeder_versions_table.php' =>
+                database_path('migrations/' . date('Y_m_d_His') . '_create_seeder_versions_table.php'),
+        ], 'seeder-versioning');
     }
 }
