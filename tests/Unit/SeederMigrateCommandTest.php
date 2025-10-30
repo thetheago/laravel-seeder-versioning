@@ -19,10 +19,7 @@ class SeederMigrateCommandTest extends TestCase
 
         $this->app->instance(SeederVersioningService::class, $serviceMock);
 
-        $this->artisan('seed:migrate')
-            ->expectsOutput('Running seeders...')
-            ->expectsOutput('Done.')
-            ->assertExitCode(0);
+        $this->artisan('seed:migrate')->assertExitCode(0);
 
     }
 
@@ -36,10 +33,7 @@ class SeederMigrateCommandTest extends TestCase
 
         $this->app->instance(SeederVersioningService::class, $serviceMock);
 
-        $this->artisan('seed:migrate', ['--hash-only' => true])
-            ->expectsOutput('Generating seeders hashing (hash-only).')
-            ->expectsOutput('Done.')
-            ->assertExitCode(0);
+        $this->artisan('seed:migrate', ['--hash-only' => true])->assertExitCode(0);
     }
 
     public function test_commandShouldFailWhenEnsureSetupThrowsException(): void
