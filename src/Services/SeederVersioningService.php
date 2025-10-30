@@ -77,14 +77,15 @@ class SeederVersioningService
 
         $anySeederRunned = false;
 
+        $existingSeeders = DB::table($this->table)->get()->keyBy('seeder');
+
         foreach ($files as $file) {
             $seeder = $this->resolveSeederClass($file);
             $seederName = $file->getFilenameWithoutExtension();
             $hash = $this->calculateHash($file->getPathname());
 
-            $existing = DB::table($this->table)->where('seeder', $seederName)->first();
+            $existing = $existingSeeders->get($seederName);
 
-            // New seeder
             if (!$existing) {
                 if (!$hashOnly) {
                     $this->output->writeln("<fg=gray> └─ Running new seeder... </> <fg=green>{$seederName}</>");
@@ -102,7 +103,6 @@ class SeederVersioningService
                 continue;
             }
 
-            // Modified seeder
             if ($existing->hash !== $hash) {
                 $this->output->writeln("<fg=yellow>[SeederVersioning] </>Changes detected in seeder <fg=green>{$seederName}</>");
 
@@ -121,7 +121,7 @@ class SeederVersioningService
             }
         }
 
-        if (! $anySeederRunned) {
+        if (! $anySeederRunned && ! $hashOnly) {
             $this->output->writeln("<fg=yellow>[SeederVersioning] </>No new or modified seeders to execute.");
         }
     }
