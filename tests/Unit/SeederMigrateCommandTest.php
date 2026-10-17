@@ -57,4 +57,55 @@ class SeederMigrateCommandTest extends TestCase
             ->expectsOutput("⚠️  Seeder table missing.\n")
             ->assertExitCode(Command::FAILURE);
     }
+
+    public function test_commandShouldAskForConfirmationInProduction(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+
+        $serviceMock = Mockery::mock(SeederVersioningService::class);
+        $serviceMock->shouldReceive('ensureSetup')->once();
+        $serviceMock->shouldReceive('runVersionedSeeders')
+            ->once()
+            ->with(false);
+
+        $this->app->instance(SeederVersioningService::class, $serviceMock);
+
+        $this->artisan('seed:migrate')
+            ->expectsConfirmation('Are you sure you want to run this command?', 'yes')
+            ->expectsOutput('Done.')
+            ->assertExitCode(0);
+    }
+
+    public function test_commandShouldNotRunSeedersWhenConfirmationIsDenied(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+
+        $serviceMock = Mockery::mock(SeederVersioningService::class);
+        $serviceMock->shouldReceive('ensureSetup')->once();
+        $serviceMock->shouldNotReceive('runVersionedSeeders');
+
+        $this->app->instance(SeederVersioningService::class, $serviceMock);
+
+        $this->artisan('seed:migrate')
+            ->expectsConfirmation('Are you sure you want to run this command?', 'no')
+            ->assertExitCode(Command::FAILURE);
+    }
+
+    public function test_commandShouldNotAskForConfirmationWithForceOption(): void
+    {
+        $this->app->detectEnvironment(fn () => 'production');
+
+        $serviceMock = Mockery::mock(SeederVersioningService::class);
+        $serviceMock->shouldReceive('ensureSetup')->once();
+        $serviceMock->shouldReceive('runVersionedSeeders')
+            ->once()
+            ->with(false);
+
+        $this->app->instance(SeederVersioningService::class, $serviceMock);
+
+        $this->artisan('seed:migrate', ['--force' => true])
+            ->doesntExpectOutput('Are you sure you want to run this command?')
+            ->expectsOutput('Done.')
+            ->assertExitCode(0);
+    }
 }

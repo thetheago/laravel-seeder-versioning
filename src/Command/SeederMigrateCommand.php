@@ -3,12 +3,16 @@
 namespace Thetheago\SeederVersioning\Command;
 
 use Illuminate\Console\Command;
+use Illuminate\Console\ConfirmableTrait;
 use Thetheago\SeederVersioning\Services\SeederVersioningService;
 
 class SeederMigrateCommand extends Command
 {
+    use ConfirmableTrait;
+
     protected $signature = 'seed:migrate
-                            {--hash-only : Just generate the hash of migrations, without running them.}';
+                            {--hash-only : Just generate the hash of migrations, without running them.}
+                            {--force : Force the operation to run when in production.}';
     protected $description = 'Run seeders that have been modified.';
 
     public function __construct(protected SeederVersioningService $service)
@@ -22,6 +26,10 @@ class SeederMigrateCommand extends Command
             $this->service->ensureSetup();
         } catch (\RuntimeException $e) {
             $this->warn("⚠️  {$e->getMessage()}\n");
+            return self::FAILURE;
+        }
+
+        if (! $this->confirmToProceed()) {
             return self::FAILURE;
         }
 

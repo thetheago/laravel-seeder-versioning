@@ -45,6 +45,12 @@ This command will:
 2. Compare their content against previously run versions
 3. Only execute seeders that have been modified or haven't been run before
 
+In production (`APP_ENV=production`) the command asks for confirmation before running, like `db:seed`. Use `--force` to skip the question (deploys, CI):
+
+```bash
+php artisan seed:migrate --force
+```
+
 ### Hash Generation Only
 
 If you want to generate hash versions for your seeders without executing them:
