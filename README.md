@@ -45,6 +45,12 @@ This command will:
 2. Compare their content against previously run versions
 3. Only execute seeders that have been modified or haven't been run before
 
+In production (`APP_ENV=production`) the command asks for confirmation before running, like `db:seed`. Use `--force` to skip the question (deploys, CI):
+
+```bash
+php artisan seed:migrate --force
+```
+
 ### Hash Generation Only
 
 If you want to generate hash versions for your seeders without executing them:
@@ -79,6 +85,19 @@ When you run `seed:migrate`, the package:
 2. Generates a hash for each seeder's content
 3. Compares against stored hashes
 4. Executes only modified or new seeders
+
+### Excluding seeders
+
+`DatabaseSeeder` is skipped by default: it calls the other seeders, so running it would run them twice. To skip other seeders, add them to `except` in `config/seeder-versioning.php`, with or without namespace:
+
+```php
+'except' => [
+    'DatabaseSeeder',
+    \Database\Seeders\LocalDevSeeder::class,
+],
+```
+
+Excluded seeders are never run or registered in the versioning table.
 
 ## Contributing
 

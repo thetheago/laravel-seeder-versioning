@@ -43,4 +43,18 @@ return [
     |
     */
     'order' => [],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Excluded seeders
+    |--------------------------------------------------------------------------
+    |
+    | Seeders that will never be versioned or run. DatabaseSeeder is excluded by
+    | default because it calls the other seeders, which would make them run twice.
+    | Use the class name, with or without namespace.
+    |
+    */
+    'except' => [
+        'DatabaseSeeder',
+    ],
 ];
