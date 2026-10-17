@@ -10,15 +10,18 @@ use Thetheago\SeederVersioning\Tests\TestCase;
 
 class SeederStatusCommandTest extends TestCase
 {
+    private const HEADERS = ['Seeder', 'Status', 'Hash', 'Risks'];
+    private const INSERT_RISK = '[medium] insert() without upsert';
+
     public function test_commandShouldListNewSeedersWithoutRunningThem(): void
     {
         $hashes = $this->currentHashes();
 
         $this->artisan('seed:status')
             ->expectsOutput('No seeders have been run yet.')
-            ->expectsTable(['Seeder', 'Status', 'Hash'], [
-                ['ProductsSeeder', 'new', substr($hashes['ProductsSeeder'], 0, 12)],
-                ['UserSeeder', 'new', substr($hashes['UserSeeder'], 0, 12)],
+            ->expectsTable(self::HEADERS, [
+                ['ProductsSeeder', 'new', substr($hashes['ProductsSeeder'], 0, 6), self::INSERT_RISK],
+                ['UserSeeder', 'new', substr($hashes['UserSeeder'], 0, 6), self::INSERT_RISK],
             ])
             ->expectsOutputToContain('2 seeders pending.')
             ->assertExitCode(0);
@@ -38,7 +41,7 @@ class SeederStatusCommandTest extends TestCase
         $hash = DB::table('seeder_versions')->where('seeder', 'UserSeeder')->value('hash');
 
         $this->artisan('seed:status')
-            ->expectsOutput('Last seeder run: UserSeeder (' . substr($hash, 0, 12) . ') at 2030-01-01 10:00:00')
+            ->expectsOutput('Last seeder run: UserSeeder (' . substr($hash, 0, 6) . ') at 2030-01-01 10:00:00')
             ->expectsOutput('No new or modified seeders.')
             ->doesntExpectOutputToContain('pending')
             ->assertExitCode(0);
@@ -50,11 +53,11 @@ class SeederStatusCommandTest extends TestCase
         $service->runSeederVersionMigration();
         $service->runVersionedSeeders(true);
 
-        DB::table('seeder_versions')->where('seeder', 'UserSeeder')->update(['hash' => str_repeat('0', 64)]);
+        $this->simulatePreviousUserSeederVersion();
 
         $this->artisan('seed:status')
-            ->expectsTable(['Seeder', 'Status', 'Hash'], [
-                ['UserSeeder', 'modified', substr($this->currentHashes()['UserSeeder'], 0, 12)],
+            ->expectsTable(self::HEADERS, [
+                ['UserSeeder', 'modified', substr($this->currentHashes()['UserSeeder'], 0, 6), self::INSERT_RISK],
             ])
             ->expectsOutputToContain('1 seeder pending.')
             ->assertExitCode(0);
@@ -66,13 +69,13 @@ class SeederStatusCommandTest extends TestCase
         $service->runSeederVersionMigration();
         $service->runVersionedSeeders(true);
 
-        DB::table('seeder_versions')->where('seeder', 'UserSeeder')->update(['hash' => str_repeat('0', 64)]);
+        $this->simulatePreviousUserSeederVersion();
         $hashes = $this->currentHashes();
 
         $this->artisan('seed:status', ['--all' => true])
-            ->expectsTable(['Seeder', 'Status', 'Hash'], [
-                ['ProductsSeeder', 'up to date', substr($hashes['ProductsSeeder'], 0, 12)],
-                ['UserSeeder', 'modified', substr($hashes['UserSeeder'], 0, 12)],
+            ->expectsTable(self::HEADERS, [
+                ['ProductsSeeder', 'up to date', substr($hashes['ProductsSeeder'], 0, 6), '-'],
+                ['UserSeeder', 'modified', substr($hashes['UserSeeder'], 0, 6), self::INSERT_RISK],
             ])
             ->expectsOutputToContain('1 seeder pending.')
             ->assertExitCode(0);
@@ -85,6 +88,14 @@ class SeederStatusCommandTest extends TestCase
         $this->artisan('seed:status')
             ->expectsOutput('⚠️  Seeders directory not found at: /path/that/does/not/exist')
             ->assertExitCode(Command::FAILURE);
+    }
+
+    /**
+     * Makes UserSeeder look changed since its last run.
+     */
+    private function simulatePreviousUserSeederVersion(): void
+    {
+        DB::table('seeder_versions')->where('seeder', 'UserSeeder')->update(['hash' => str_repeat('0', 64)]);
     }
 
     /**

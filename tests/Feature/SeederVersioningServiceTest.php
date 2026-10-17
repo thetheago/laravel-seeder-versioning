@@ -163,6 +163,27 @@ class SeederVersioningServiceTest extends TestCase
         $this->assertTrue(Schema::hasTable('seeder_version_history'));
     }
 
+    public function test_seederStatusesReturnsRisksOfPendingSeeders(): void
+    {
+        $statuses = array_column(app(SeederVersioningService::class)->seederStatuses(), null, 'seeder');
+
+        $this->assertSame(
+            [['level' => 'medium', 'message' => 'insert() without upsert']],
+            $statuses['UserSeeder']['risks']
+        );
+    }
+
+    public function test_seederStatusesSkipsRisksOfUpToDateSeeders(): void
+    {
+        $service = app(SeederVersioningService::class);
+        $service->runSeederVersionMigration();
+        $service->runVersionedSeeders(true);
+
+        $status = array_column($service->seederStatuses(), null, 'seeder')['UserSeeder'];
+
+        $this->assertSame([], $status['risks']);
+    }
+
     public function test_ensureSetupUsesTheConfiguredTableName(): void
     {
         config()->set('seeder-versioning.table', 'custom_seeder_versions');

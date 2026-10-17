@@ -45,10 +45,40 @@ This command will:
 2. Compare their content against previously run versions
 3. Only execute seeders that have been modified or haven't been run before
 
-In production (`APP_ENV=production`) the command asks for confirmation before running, like `db:seed`. Use `--force` to skip the question (deploys, CI):
+Before running, it shows what will run and asks for confirmation:
+
+```text
++---------------+----------+--------+----------------------------------+
+| Seeder        | Status   | Hash   | Risks                            |
++---------------+----------+--------+----------------------------------+
+| RoleSeeder    | modified | 49ab5e | [high] truncate() on table roles |
+| ProductSeeder | new      | cd5947 | [medium] insert() without upsert |
++---------------+----------+--------+----------------------------------+
+
+ 2 seeders, 1 high risk will be run. Do you want to continue? (yes/no) [no]:
+```
+
+- **Risks**: found by static analysis of the current code of each seeder that will run (`token_get_all()`, nothing is executed and nothing is stored). It is a heuristic, not a guarantee:
+
+| Pattern | Risk | Level |
+| --- | --- | --- |
+| `truncate()`, `delete()`, `forceDelete()`, `DB::statement('DROP/TRUNCATE/DELETE ...')` | Deletes existing data | high |
+| `insert()` / `create()` without `upsert`/`updateOrCreate`/`firstOrCreate`/`updateOrInsert`/`insertOrIgnore` in the seeder | May duplicate data on rerun | medium |
+| `$this->call(...)` | Runs other seeders too | medium |
+| `factory()` / `::factory()` | Random data, not idempotent | medium |
+| `Schema::disableForeignKeyConstraints()` | Disables foreign keys | medium |
+
+When is the question asked:
+
+- In a terminal, always. Answering `no` runs nothing and exits with `1`.
+- Without a terminal (`--no-interaction`, CI), it runs without asking, except in production (`APP_ENV=production`), where it is cancelled, like `db:seed`.
+- `--force` skips the question everywhere (deploys).
+
+To only see the table, without running anything or creating the versioning tables:
 
 ```bash
-php artisan seed:migrate --force
+php artisan seed:migrate --pretend
+php artisan seed:migrate --force   # run without asking
 ```
 
 ### Hash Generation Only
@@ -73,18 +103,19 @@ php artisan seed:status
 ```
 
 ```text
-Last seeder run: UserSeeder (c9fd9cfb3e17) at 2026-10-17 17:29:36
+Last seeder run: UserSeeder (c9fd9c) at 2026-10-17 17:29:36
 
-+---------------+----------+--------------+
-| Seeder        | Status   | Hash         |
-+---------------+----------+--------------+
-| ProductSeeder | new      | cd59479316bd |
-| UserSeeder    | modified | dfd2ab78ee0a |
-+---------------+----------+--------------+
++---------------+----------+--------+----------------------------------+
+| Seeder        | Status   | Hash   | Risks                            |
++---------------+----------+--------+----------------------------------+
+| ProductSeeder | new      | cd5947 | [medium] insert() without upsert |
+| UserSeeder    | modified | dfd2ab | [medium] insert() without upsert |
++---------------+----------+--------+----------------------------------+
 2 seeders pending. Run php artisan seed:migrate to execute them.
 ```
 
 - `new`: never run; `modified`: changed since its last run (the hash is the file's current one).
+- Risks work as in `seed:migrate` (see above).
 - Use `--all` to also list the seeders that are `up to date`.
 
 ## How It Works

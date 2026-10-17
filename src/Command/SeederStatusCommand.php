@@ -3,12 +3,14 @@
 namespace Thetheago\SeederVersioning\Command;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Str;
 use RuntimeException;
+use Thetheago\SeederVersioning\Command\Concerns\RendersSeederPreview;
 use Thetheago\SeederVersioning\Services\SeederVersioningService;
 
 class SeederStatusCommand extends Command
 {
+    use RendersSeederPreview;
+
     protected $signature = 'seed:status
                             {--all : Also list the seeders that are up to date.}';
     protected $description = 'Show the last seeder run and the seeders that have not been run yet.';
@@ -37,18 +39,11 @@ class SeederStatusCommand extends Command
 
         $this->newLine();
 
-        $pending = array_filter(
-            $statuses,
-            fn (array $status) => $status['status'] !== SeederVersioningService::STATUS_UP_TO_DATE
-        );
-
+        $pending = $this->pendingSeeders($statuses);
         $rows = $this->option('all') ? $statuses : $pending;
 
         if ($rows) {
-            $this->table(['Seeder', 'Status', 'Hash'], array_map(
-                fn (array $status) => [$status['seeder'], $status['status'], $this->shortHash($status['hash'])],
-                $rows
-            ));
+            $this->renderSeederTable($rows);
         }
 
         if (! $pending) {
@@ -56,14 +51,8 @@ class SeederStatusCommand extends Command
             return self::SUCCESS;
         }
 
-        $count = count($pending);
-        $this->line($count . ' ' . Str::plural('seeder', $count) . ' pending. Run <comment>php artisan seed:migrate</comment> to execute them.');
+        $this->line($this->pendingSummary($pending) . ' pending. Run <comment>php artisan seed:migrate</comment> to execute them.');
 
         return self::SUCCESS;
-    }
-
-    protected function shortHash(string $hash): string
-    {
-        return substr($hash, 0, 12);
     }
 }

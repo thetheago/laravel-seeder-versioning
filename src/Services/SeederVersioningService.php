@@ -22,13 +22,15 @@ class SeederVersioningService
     protected string $table;
     protected string $historyTable;
     protected SeederRunner $seederRunner;
+    protected SeederRiskAnalyzer $riskAnalyzer;
     protected ConsoleOutput $output;
 
-    public function __construct(SeederRunner $seederRunner)
+    public function __construct(SeederRunner $seederRunner, ?SeederRiskAnalyzer $riskAnalyzer = null)
     {
         $this->table = config('seeder-versioning.table', 'seeder_versions');
         $this->historyTable = config('seeder-versioning.history_table', 'seeder_version_history');
         $this->seederRunner = $seederRunner;
+        $this->riskAnalyzer = $riskAnalyzer ?? new SeederRiskAnalyzer();
         $this->output = new ConsoleOutput();
     }
 
@@ -149,7 +151,14 @@ class SeederVersioningService
     /**
      * Status of each versioned seeder, in execution order. Read-only: nothing is run or registered.
      *
-     * @return array<int, array{seeder: string, status: string, hash: string}>
+     * For new and modified seeders it also returns the risks found in their current code.
+     *
+     * @return array<int, array{
+     *     seeder: string,
+     *     status: string,
+     *     hash: string,
+     *     risks: array<int, array{level: string, message: string}>
+     * }>
      * @throws RuntimeException
      */
     public function seederStatuses(): array
@@ -171,14 +180,22 @@ class SeederVersioningService
             $hash = $this->calculateHash($file->getPathname());
             $existing = $existingSeeders->get($seederName);
 
+            $status = match (true) {
+                ! $existing => self::STATUS_NEW,
+                $existing->hash !== $hash => self::STATUS_MODIFIED,
+                default => self::STATUS_UP_TO_DATE,
+            };
+
+            // Only what is going to run is analyzed.
+            $risks = $status === self::STATUS_UP_TO_DATE
+                ? []
+                : $this->riskAnalyzer->analyze(File::get($file->getPathname()));
+
             $statuses[] = [
                 'seeder' => $seederName,
-                'status' => match (true) {
-                    ! $existing => self::STATUS_NEW,
-                    $existing->hash !== $hash => self::STATUS_MODIFIED,
-                    default => self::STATUS_UP_TO_DATE,
-                },
+                'status' => $status,
                 'hash' => $hash,
+                'risks' => $risks,
             ];
         }
 
