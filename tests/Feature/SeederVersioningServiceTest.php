@@ -2,7 +2,10 @@
 
 namespace Thetheago\SeederVersioning\Tests\Feature;
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 use Mockery;
 use Thetheago\SeederVersioning\Tests\Database\Seeders\ProductsSeeder;
 use Thetheago\SeederVersioning\Services\SeederRunner;
@@ -95,6 +98,66 @@ class SeederVersioningServiceTest extends TestCase
 
         $this->assertNotEquals($userSeederBeforeDetail->hash, $userSeederAfterDetail->hash);
         $this->assertDatabaseCount('users', 4);
+    }
+
+    public function test_historyRecordsNewSeedersWithoutPreviousHash(): void
+    {
+        app(SeederVersioningService::class)->runSeederVersionMigration();
+        app(SeederVersioningService::class)->runVersionedSeeders();
+
+        $history = DB::table('seeder_version_history')->where('seeder', 'UserSeeder')->get();
+        $current = DB::table('seeder_versions')->where('seeder', 'UserSeeder')->first();
+
+        $this->assertCount(1, $history);
+        $this->assertEquals($current->hash, $history[0]->hash);
+        $this->assertNull($history[0]->previous_hash);
+        $this->assertEquals(0, $history[0]->hash_only);
+    }
+
+    public function test_historyKeepsEveryChangeAndSkipsUnchangedRuns(): void
+    {
+        $seederVersioning = new SeederVersioningService(new SeederRunner());
+        $seederVersioning->runSeederVersionMigration();
+        $seederVersioning->runVersionedSeeders();
+        $seederVersioning->runVersionedSeeders();
+
+        $this->assertEquals(1, DB::table('seeder_version_history')->where('seeder', 'UserSeeder')->count());
+
+        $originalHash = DB::table('seeder_versions')->where('seeder', 'UserSeeder')->value('hash');
+
+        $this->changeUserSeederContentTemporary($seederVersioning);
+
+        $history = DB::table('seeder_version_history')->where('seeder', 'UserSeeder')->orderBy('id')->get();
+
+        $this->assertCount(2, $history);
+        $this->assertEquals($originalHash, $history[1]->previous_hash);
+        $this->assertEquals(
+            DB::table('seeder_versions')->where('seeder', 'UserSeeder')->value('hash'),
+            $history[1]->hash
+        );
+    }
+
+    public function test_historyMarksHashOnlyRuns(): void
+    {
+        app(SeederVersioningService::class)->runSeederVersionMigration();
+        app(SeederVersioningService::class)->runVersionedSeeders(true);
+
+        $this->assertEquals(2, DB::table('seeder_version_history')->where('hash_only', true)->count());
+    }
+
+    public function test_ensureSetupCreatesHistoryTableWhenVersionsTableAlreadyExists(): void
+    {
+        Artisan::call('migrate', [
+            '--path' => __DIR__ . '/../../database/migrations/2025_01_01_000000_create_seeder_versions_table.php',
+            '--realpath' => true,
+        ]);
+        $this->assertTrue(Schema::hasTable('seeder_versions'));
+        $this->assertFalse(Schema::hasTable('seeder_version_history'));
+
+        File::partialMock()->shouldReceive('exists')->with(config_path('seeder-versioning.php'))->andReturn(true);
+        app(SeederVersioningService::class)->ensureSetup();
+
+        $this->assertTrue(Schema::hasTable('seeder_version_history'));
     }
 
     public function test_databaseSeederIsExcludedByDefault(): void
