@@ -4,6 +4,7 @@ namespace Thetheago\SeederVersioning;
 
 use Illuminate\Support\ServiceProvider;
 use Thetheago\SeederVersioning\Command\SeederMigrateCommand;
+use Thetheago\SeederVersioning\Command\SeederStatusCommand;
 use Thetheago\SeederVersioning\Services\SeederRunner;
 use Thetheago\SeederVersioning\Services\SeederVersioningService;
 
@@ -40,6 +41,7 @@ class SeederVersioningServiceProvider extends ServiceProvider
     {
         $this->commands([
             SeederMigrateCommand::class,
+            SeederStatusCommand::class,
         ]);
     }
 

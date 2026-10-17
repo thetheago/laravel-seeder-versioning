@@ -64,6 +64,29 @@ This is useful for:
 - Verifying which seeders would be executed
 - Updating the version control table without running seeders
 
+### Checking the status
+
+To see what `seed:migrate` would run, without running anything:
+
+```bash
+php artisan seed:status
+```
+
+```text
+Last seeder run: UserSeeder (c9fd9cfb3e17) at 2026-10-17 17:29:36
+
++---------------+----------+--------------+
+| Seeder        | Status   | Hash         |
++---------------+----------+--------------+
+| ProductSeeder | new      | cd59479316bd |
+| UserSeeder    | modified | dfd2ab78ee0a |
++---------------+----------+--------------+
+2 seeders pending. Run php artisan seed:migrate to execute them.
+```
+
+- `new`: never run; `modified`: changed since its last run (the hash is the file's current one).
+- Use `--all` to also list the seeders that are `up to date`.
+
 ## How It Works
 
 The package creates a `seeder_versioning` table that stores:
