@@ -28,13 +28,16 @@ class SeederMigrateCommand extends Command
         $hashOnly = $this->option('hash-only');
 
         if ($hashOnly) {
-            $this->info('Generating seeders hashing (hash-only).' . PHP_EOL);
+            $this->info('Generating seeders hashing (hash-only).');
+            $this->newLine();
         } else {
-            $this->info('Running seeders...' . PHP_EOL);
+            $this->info('Running seeders...');
+            $this->newLine();
         }
 
         $this->service->runVersionedSeeders($hashOnly);
-        $this->info(PHP_EOL. 'Done.');
+        $this->newLine();
+        $this->info('Done.');
         return self::SUCCESS;
     }
 }
