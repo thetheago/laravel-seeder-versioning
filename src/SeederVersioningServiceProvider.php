@@ -15,11 +15,11 @@ class SeederVersioningServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/seeder-versioning.php', 'seeder-versioning');
-        $this->app->singleton('seeder-versioning', SeederVersioningService::class);
-
         $this->app->singleton(SeederVersioningService::class, function ($app) {
             return new SeederVersioningService(new SeederRunner());
         });
+
+        $this->app->alias(SeederVersioningService::class, 'seeder-versioning');
     }
 
     /**
