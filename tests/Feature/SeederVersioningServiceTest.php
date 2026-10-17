@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Mockery;
 use Thetheago\SeederVersioning\Services\SeederRunner;
 use Thetheago\SeederVersioning\Services\SeederVersioningService;
+use Thetheago\SeederVersioning\Tests\Database\Seeders\UserSeeder;
 use Thetheago\SeederVersioning\Tests\TestCase;
 
 class SeederVersioningServiceTest extends TestCase
@@ -42,6 +43,19 @@ class SeederVersioningServiceTest extends TestCase
         $this->assertDatabaseMissing('users', ['email' => 'mike@maluco.com']);
         $this->assertDatabaseMissing('products', ['name' => 'coke']);
         $this->assertDatabaseMissing('products', ['name' => 'guitar']);
+    }
+
+    public function test_runVersionedSeedersFollowsConfiguredOrder(): void
+    {
+        config(['seeder-versioning.order' => [UserSeeder::class]]);
+
+        app(SeederVersioningService::class)->runSeederVersionMigration();
+        app(SeederVersioningService::class)->runVersionedSeeders(true);
+
+        $this->assertEquals(
+            ['UserSeeder', 'ProductsSeeder'],
+            DB::table('seeder_versions')->orderBy('id')->pluck('seeder')->all()
+        );
     }
 
     public function test_ensureSameHashedSeederDoesntRunTwice(): void

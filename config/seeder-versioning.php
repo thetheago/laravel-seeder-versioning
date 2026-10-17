@@ -21,4 +21,15 @@ return [
     |
     */
     'table' => 'seeder_versions',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Execution order
+    |--------------------------------------------------------------------------
+    |
+    | Seeders listed here run first, in this order. Seeders not listed run
+    | after them, in alphabetical order. Example: [RoleSeeder::class, UserSeeder::class]
+    |
+    */
+    'order' => [],
 ];

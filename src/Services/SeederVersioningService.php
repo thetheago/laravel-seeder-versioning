@@ -75,6 +75,8 @@ class SeederVersioningService
             return;
         }
 
+        $files = $this->sortByConfiguredOrder($files);
+
         $anySeederRunned = false;
 
         $existingSeeders = DB::table($this->table)->get()->keyBy('seeder');
@@ -155,6 +157,23 @@ class SeederVersioningService
         }
 
         return $fullClass;
+    }
+
+    /**
+     * Seeders listed in the "order" config run first, in that order; the rest keep alphabetical order.
+     *
+     * @param SplFileInfo[] $files
+     * @return SplFileInfo[]
+     */
+    protected function sortByConfiguredOrder(array $files): array
+    {
+        $position = array_flip(array_map('class_basename', config('seeder-versioning.order', [])));
+
+        usort($files, fn (SplFileInfo $a, SplFileInfo $b) =>
+            ($position[$a->getFilenameWithoutExtension()] ?? PHP_INT_MAX)
+            <=> ($position[$b->getFilenameWithoutExtension()] ?? PHP_INT_MAX));
+
+        return $files;
     }
 
     protected function calculateHash(string $path): string
