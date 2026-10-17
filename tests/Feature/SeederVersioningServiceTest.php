@@ -193,6 +193,47 @@ class SeederVersioningServiceTest extends TestCase
         $this->assertDatabaseCount('products', 0);
     }
 
+    public function test_seederStatusesFollowsOrderAndSkipsExcludedSeeders(): void
+    {
+        config(['seeder-versioning.order' => [UserSeeder::class]]);
+
+        $statuses = app(SeederVersioningService::class)->seederStatuses();
+
+        $this->assertEquals(['UserSeeder', 'ProductsSeeder'], array_column($statuses, 'seeder'));
+        $this->assertEquals(
+            [SeederVersioningService::STATUS_NEW, SeederVersioningService::STATUS_NEW],
+            array_column($statuses, 'status')
+        );
+    }
+
+    public function test_seederStatusesDetectsModifiedAndUpToDateSeeders(): void
+    {
+        $service = app(SeederVersioningService::class);
+        $service->runSeederVersionMigration();
+        $service->runVersionedSeeders(true);
+
+        DB::table('seeder_versions')->where('seeder', 'UserSeeder')->update(['hash' => str_repeat('0', 64)]);
+
+        $this->assertEquals(
+            ['ProductsSeeder' => SeederVersioningService::STATUS_UP_TO_DATE, 'UserSeeder' => SeederVersioningService::STATUS_MODIFIED],
+            array_column($service->seederStatuses(), 'status', 'seeder')
+        );
+    }
+
+    public function test_lastRanSeederReturnsTheMostRecentOne(): void
+    {
+        $service = app(SeederVersioningService::class);
+
+        $this->assertNull($service->lastRanSeeder());
+
+        $service->runSeederVersionMigration();
+        $service->runVersionedSeeders(true);
+
+        DB::table('seeder_versions')->where('seeder', 'ProductsSeeder')->update(['ran_at' => '2030-01-01 10:00:00']);
+
+        $this->assertEquals('ProductsSeeder', $service->lastRanSeeder()->seeder);
+    }
+
     /**
      * @param SeederVersioningService $seederVersioning
      * @return void
