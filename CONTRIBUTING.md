@@ -13,6 +13,13 @@ composer install
 composer test
 ```
 
+No PHP locally? Use Docker (PHP 8.3; tests use SQLite in memory, no database needed):
+
+```bash
+docker compose run --rm app composer install
+docker compose run --rm app composer test
+```
+
 ## Workflow
 
 1. Comment on the issue you want to take, so nobody duplicates work.
