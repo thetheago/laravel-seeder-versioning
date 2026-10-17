@@ -4,6 +4,7 @@ namespace Thetheago\SeederVersioning\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
 use Mockery;
+use Thetheago\SeederVersioning\Tests\Database\Seeders\ProductsSeeder;
 use Thetheago\SeederVersioning\Services\SeederRunner;
 use Thetheago\SeederVersioning\Services\SeederVersioningService;
 use Thetheago\SeederVersioning\Tests\Database\Seeders\UserSeeder;
@@ -94,6 +95,39 @@ class SeederVersioningServiceTest extends TestCase
 
         $this->assertNotEquals($userSeederBeforeDetail->hash, $userSeederAfterDetail->hash);
         $this->assertDatabaseCount('users', 4);
+    }
+
+    public function test_databaseSeederIsExcludedByDefault(): void
+    {
+        app(SeederVersioningService::class)->runSeederVersionMigration();
+        app(SeederVersioningService::class)->runVersionedSeeders();
+
+        $this->assertDatabaseMissing('seeder_versions', ['seeder' => 'DatabaseSeeder']);
+        $this->assertDatabaseCount('users', 2);
+        $this->assertDatabaseCount('products', 2);
+    }
+
+    public function test_databaseSeederRunsWhenNotExcluded(): void
+    {
+        config()->set('seeder-versioning.except', []);
+
+        app(SeederVersioningService::class)->runSeederVersionMigration();
+        app(SeederVersioningService::class)->runVersionedSeeders();
+
+        $this->assertDatabaseHas('seeder_versions', ['seeder' => 'DatabaseSeeder']);
+        $this->assertDatabaseCount('users', 4);
+    }
+
+    public function test_seederExcludedByFullyQualifiedNameIsSkipped(): void
+    {
+        config()->set('seeder-versioning.except', ['DatabaseSeeder', ProductsSeeder::class]);
+
+        app(SeederVersioningService::class)->runSeederVersionMigration();
+        app(SeederVersioningService::class)->runVersionedSeeders();
+
+        $this->assertDatabaseMissing('seeder_versions', ['seeder' => 'ProductsSeeder']);
+        $this->assertDatabaseHas('seeder_versions', ['seeder' => 'UserSeeder']);
+        $this->assertDatabaseCount('products', 0);
     }
 
     /**

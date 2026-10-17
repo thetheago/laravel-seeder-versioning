@@ -71,6 +71,19 @@ When you run `seed:migrate`, the package:
 3. Compares against stored hashes
 4. Executes only modified or new seeders
 
+### Excluding seeders
+
+`DatabaseSeeder` is skipped by default: it calls the other seeders, so running it would run them twice. To skip other seeders, add them to `except` in `config/seeder-versioning.php`, with or without namespace:
+
+```php
+'except' => [
+    'DatabaseSeeder',
+    \Database\Seeders\LocalDevSeeder::class,
+],
+```
+
+Excluded seeders are never run or registered in the versioning table.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

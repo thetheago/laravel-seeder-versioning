@@ -82,8 +82,13 @@ class SeederVersioningService
         $existingSeeders = DB::table($this->table)->get()->keyBy('seeder');
 
         foreach ($files as $file) {
-            $seeder = $this->resolveSeederClass($file);
             $seederName = $file->getFilenameWithoutExtension();
+
+            if ($this->isExcluded($seederName)) {
+                continue;
+            }
+
+            $seeder = $this->resolveSeederClass($file);
             $hash = $this->calculateHash($file->getPathname());
 
             $existing = $existingSeeders->get($seederName);
@@ -174,6 +179,17 @@ class SeederVersioningService
             <=> ($position[$b->getFilenameWithoutExtension()] ?? PHP_INT_MAX));
 
         return $files;
+    }
+
+    /**
+     * Seeders are tracked by class name without namespace, so entries in the
+     * except list are compared the same way.
+     */
+    public function isExcluded(string $seederName): bool
+    {
+        $except = array_map('class_basename', config('seeder-versioning.except', ['DatabaseSeeder']));
+
+        return in_array($seederName, $except, true);
     }
 
     protected function calculateHash(string $path): string
