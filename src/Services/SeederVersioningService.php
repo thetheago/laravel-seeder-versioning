@@ -12,13 +12,18 @@ use Symfony\Component\Console\Output\ConsoleOutput;
 
 class SeederVersioningService
 {
+    protected const VERSIONS_MIGRATION = '2025_01_01_000000_create_seeder_versions_table.php';
+    protected const HISTORY_MIGRATION = '2025_01_02_000000_create_seeder_version_history_table.php';
+
     protected string $table;
+    protected string $historyTable;
     protected SeederRunner $seederRunner;
     protected ConsoleOutput $output;
 
     public function __construct(SeederRunner $seederRunner)
     {
         $this->table = config('seeder-versioning.table', 'seeder_versions');
+        $this->historyTable = config('seeder-versioning.history_table', 'seeder_version_history');
         $this->seederRunner = $seederRunner;
         $this->output = new ConsoleOutput();
     }
@@ -39,16 +44,25 @@ class SeederVersioningService
 
         if (! Schema::hasTable('seeder_versions')) {
             $this->output->writeln("<fg=yellow>[SeederVersioning] </>Creating table <fg=cyan>{$this->table}</>...");
-            $this->runSeederVersionMigration();
+            $this->runMigration(self::VERSIONS_MIGRATION);
+        }
+
+        if (! Schema::hasTable($this->historyTable)) {
+            $this->output->writeln("<fg=yellow>[SeederVersioning] </>Creating table <fg=cyan>{$this->historyTable}</>...");
+            $this->runMigration(self::HISTORY_MIGRATION);
         }
     }
 
     public function runSeederVersionMigration(): void
     {
-        $migrationFile = __DIR__ . '/../../database/migrations/2025_01_01_000000_create_seeder_versions_table.php';
+        $this->runMigration(self::VERSIONS_MIGRATION);
+        $this->runMigration(self::HISTORY_MIGRATION);
+    }
 
+    protected function runMigration(string $migration): void
+    {
         Artisan::call('migrate', [
-            '--path' => $migrationFile,
+            '--path' => __DIR__ . '/../../database/migrations/' . $migration,
             '--realpath' => true,
             '--force' => true,
         ]);
@@ -100,6 +114,7 @@ class SeederVersioningService
                     'hash' => $hash,
                     'ran_at' => now(),
                 ]);
+                $this->recordHistory($seederName, $hash, null, $hashOnly);
 
                 $this->output->writeln("<fg=green> ✔ Seeder registered with hash:</> <fg=cyan>{$hash}</>");
                 continue;
@@ -118,6 +133,7 @@ class SeederVersioningService
                     'hash' => $hash,
                     'ran_at' => now(),
                 ]);
+                $this->recordHistory($seederName, $hash, $existing->hash, $hashOnly);
 
                 $this->output->writeln("<fg=green> ✔ Seeder updated with new hash:</> <fg=cyan>{$hash}</>");
             }
@@ -174,6 +190,17 @@ class SeederVersioningService
             <=> ($position[$b->getFilenameWithoutExtension()] ?? PHP_INT_MAX));
 
         return $files;
+    }
+
+    protected function recordHistory(string $seederName, string $hash, ?string $previousHash, bool $hashOnly): void
+    {
+        DB::table($this->historyTable)->insert([
+            'seeder' => $seederName,
+            'hash' => $hash,
+            'previous_hash' => $previousHash,
+            'hash_only' => $hashOnly,
+            'ran_at' => now(),
+        ]);
     }
 
     protected function calculateHash(string $path): string

@@ -65,6 +65,15 @@ The package creates a `seeder_versioning` table that stores:
 - Content hashes
 - Execution timestamps
 
+Every time a seeder is registered, a row is also added to the `seeder_version_history` table
+(configurable with `history_table`) with the seeder name, the new hash, the previous hash
+(`null` the first time), whether it was a `--hash-only` run, and when it happened. This lets
+you see how many times a seeder ran and when its content changed.
+
+If you are upgrading and already have the versions table, the history table is created
+automatically on the next `seed:migrate`. If you manage the package migrations yourself,
+publish them again with `php artisan vendor:publish --tag=seeder-versioning`.
+
 When you run `seed:migrate`, the package:
 1. Scans your seeder directory
 2. Generates a hash for each seeder's content

@@ -24,6 +24,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | History table name
+    |--------------------------------------------------------------------------
+    |
+    | Every time a seeder is registered (run or hash-only), a row is added to this
+    | table with the new hash, the previous one and when it happened
+    |
+    */
+    'history_table' => 'seeder_version_history',
+
+    /*
+    |--------------------------------------------------------------------------
     | Execution order
     |--------------------------------------------------------------------------
     |
