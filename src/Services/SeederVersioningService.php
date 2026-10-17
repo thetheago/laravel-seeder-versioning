@@ -12,6 +12,10 @@ use Symfony\Component\Console\Output\ConsoleOutput;
 
 class SeederVersioningService
 {
+    public const STATUS_NEW = 'new';
+    public const STATUS_MODIFIED = 'modified';
+    public const STATUS_UP_TO_DATE = 'up to date';
+
     protected const VERSIONS_MIGRATION = '2025_01_01_000000_create_seeder_versions_table.php';
     protected const HISTORY_MIGRATION = '2025_01_02_000000_create_seeder_version_history_table.php';
 
@@ -89,19 +93,12 @@ class SeederVersioningService
             return;
         }
 
-        $files = $this->sortByConfiguredOrder($files);
-
         $anySeederRunned = false;
 
         $existingSeeders = DB::table($this->table)->get()->keyBy('seeder');
 
-        foreach ($files as $file) {
+        foreach ($this->versionedFiles($files) as $file) {
             $seederName = $file->getFilenameWithoutExtension();
-
-            if ($this->isExcluded($seederName)) {
-                continue;
-            }
-
             $seeder = $this->resolveSeederClass($file);
             $hash = $this->calculateHash($file->getPathname());
 
@@ -149,6 +146,57 @@ class SeederVersioningService
         }
     }
 
+    /**
+     * Status of each versioned seeder, in execution order. Read-only: nothing is run or registered.
+     *
+     * @return array<int, array{seeder: string, status: string, hash: string}>
+     * @throws RuntimeException
+     */
+    public function seederStatuses(): array
+    {
+        $path = config('seeder-versioning.path', database_path('seeders'));
+
+        if (! File::exists($path)) {
+            throw new RuntimeException("Seeders directory not found at: {$path}");
+        }
+
+        $existingSeeders = Schema::hasTable($this->table)
+            ? DB::table($this->table)->get()->keyBy('seeder')
+            : collect();
+
+        $statuses = [];
+
+        foreach ($this->versionedFiles(File::files($path)) as $file) {
+            $seederName = $file->getFilenameWithoutExtension();
+            $hash = $this->calculateHash($file->getPathname());
+            $existing = $existingSeeders->get($seederName);
+
+            $statuses[] = [
+                'seeder' => $seederName,
+                'status' => match (true) {
+                    ! $existing => self::STATUS_NEW,
+                    $existing->hash !== $hash => self::STATUS_MODIFIED,
+                    default => self::STATUS_UP_TO_DATE,
+                },
+                'hash' => $hash,
+            ];
+        }
+
+        return $statuses;
+    }
+
+    /**
+     * The most recently run (or hashed) seeder, or null when none was registered yet.
+     */
+    public function lastRanSeeder(): ?object
+    {
+        if (! Schema::hasTable($this->table)) {
+            return null;
+        }
+
+        return DB::table($this->table)->orderByDesc('ran_at')->orderByDesc('id')->first();
+    }
+
     public function resolveSeederClass(SplFileInfo $file): string
     {
         $filePath = $file->getPathname();
@@ -178,6 +226,20 @@ class SeederVersioningService
         }
 
         return $fullClass;
+    }
+
+    /**
+     * Files that are versioned: sorted by the configured order, without the excluded seeders.
+     *
+     * @param SplFileInfo[] $files
+     * @return SplFileInfo[]
+     */
+    protected function versionedFiles(array $files): array
+    {
+        return array_values(array_filter(
+            $this->sortByConfiguredOrder($files),
+            fn (SplFileInfo $file) => ! $this->isExcluded($file->getFilenameWithoutExtension())
+        ));
     }
 
     /**
