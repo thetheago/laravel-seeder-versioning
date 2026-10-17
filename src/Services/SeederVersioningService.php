@@ -49,7 +49,7 @@ class SeederVersioningService
             );
         }
 
-        if (! Schema::hasTable('seeder_versions')) {
+        if (! Schema::hasTable($this->table)) {
             $this->output->writeln("<fg=yellow>[SeederVersioning] </>Creating table <fg=cyan>{$this->table}</>...");
             $this->runMigration(self::VERSIONS_MIGRATION);
         }
