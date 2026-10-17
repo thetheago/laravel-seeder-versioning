@@ -16,10 +16,9 @@ trait RendersSeederPreview
      */
     protected function renderSeederTable(array $statuses): void
     {
-        $this->table(['Seeder', 'Status', 'Lines', 'Hash', 'Risks'], array_map(fn (array $status) => [
+        $this->table(['Seeder', 'Status', 'Hash', 'Risks'], array_map(fn (array $status) => [
             $status['seeder'],
             $status['status'],
-            $this->formatLines($status),
             $this->shortHash($status['hash']),
             $this->formatRisks($status['risks']),
         ], $statuses));
@@ -53,19 +52,6 @@ trait RendersSeederPreview
         }
 
         return $high ? "{$summary}, {$high} high " . Str::plural('risk', $high) : $summary;
-    }
-
-    /**
-     * @param array<string, mixed> $status
-     */
-    protected function formatLines(array $status): string
-    {
-        return match (true) {
-            $status['status'] === SeederVersioningService::STATUS_UP_TO_DATE => '-',
-            $status['lines'] === null => '?',
-            $status['lines']['removed'] === null => "+{$status['lines']['added']}",
-            default => "+{$status['lines']['added']} -{$status['lines']['removed']}",
-        };
     }
 
     /**

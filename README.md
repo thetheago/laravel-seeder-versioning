@@ -48,18 +48,17 @@ This command will:
 Before running, it shows what will run and asks for confirmation:
 
 ```text
-+---------------+----------+--------+--------+----------------------------------+
-| Seeder        | Status   | Lines  | Hash   | Risks                            |
-+---------------+----------+--------+--------+----------------------------------+
-| RoleSeeder    | modified | +12 -3 | 49ab5e | [high] truncate() on table roles |
-| ProductSeeder | new      | +48    | cd5947 | [medium] insert() without upsert |
-+---------------+----------+--------+--------+----------------------------------+
++---------------+----------+--------+----------------------------------+
+| Seeder        | Status   | Hash   | Risks                            |
++---------------+----------+--------+----------------------------------+
+| RoleSeeder    | modified | 49ab5e | [high] truncate() on table roles |
+| ProductSeeder | new      | cd5947 | [medium] insert() without upsert |
++---------------+----------+--------+----------------------------------+
 
  2 seeders, 1 high risk will be run. Do you want to continue? (yes/no) [no]:
 ```
 
-- **Lines**: lines added and removed since the last run. New seeders show their total; `?` when the previous version was registered before the package stored seeder content.
-- **Risks**: found by static analysis of the code (`token_get_all()`, nothing is executed). It is a heuristic, not a guarantee:
+- **Risks**: found by static analysis of the current code of each seeder that will run (`token_get_all()`, nothing is executed and nothing is stored). It is a heuristic, not a guarantee:
 
 | Pattern | Risk | Level |
 | --- | --- | --- |
@@ -106,17 +105,17 @@ php artisan seed:status
 ```text
 Last seeder run: UserSeeder (c9fd9c) at 2026-10-17 17:29:36
 
-+---------------+----------+-------+--------+----------------------------------+
-| Seeder        | Status   | Lines | Hash   | Risks                            |
-+---------------+----------+-------+--------+----------------------------------+
-| ProductSeeder | new      | +20   | cd5947 | [medium] insert() without upsert |
-| UserSeeder    | modified | +1 -1 | dfd2ab | [medium] insert() without upsert |
-+---------------+----------+-------+--------+----------------------------------+
++---------------+----------+--------+----------------------------------+
+| Seeder        | Status   | Hash   | Risks                            |
++---------------+----------+--------+----------------------------------+
+| ProductSeeder | new      | cd5947 | [medium] insert() without upsert |
+| UserSeeder    | modified | dfd2ab | [medium] insert() without upsert |
++---------------+----------+--------+----------------------------------+
 2 seeders pending. Run php artisan seed:migrate to execute them.
 ```
 
 - `new`: never run; `modified`: changed since its last run (the hash is the file's current one).
-- Lines and Risks work as in `seed:migrate` (see above).
+- Risks work as in `seed:migrate` (see above).
 - Use `--all` to also list the seeders that are `up to date`.
 
 ## How It Works
@@ -124,7 +123,6 @@ Last seeder run: UserSeeder (c9fd9c) at 2026-10-17 17:29:36
 The package creates a `seeder_versioning` table that stores:
 - Seeder class names
 - Content hashes
-- The seeder content, to count changed lines in the preview
 - Execution timestamps
 
 Every time a seeder is registered, a row is also added to the `seeder_version_history` table

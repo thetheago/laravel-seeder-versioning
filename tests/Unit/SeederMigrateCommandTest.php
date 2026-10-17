@@ -10,11 +10,11 @@ use Thetheago\SeederVersioning\Tests\TestCase;
 
 class SeederMigrateCommandTest extends TestCase
 {
-    private const HEADERS = ['Seeder', 'Status', 'Lines', 'Hash', 'Risks'];
+    private const HEADERS = ['Seeder', 'Status', 'Hash', 'Risks'];
 
     private const PENDING_ROWS = [
-        ['UserSeeder', 'modified', '+12 -3', '3f9a1c', '[high] truncate() on table users'],
-        ['ProductSeeder', 'new', '+48', 'a71e02', '[medium] insert() without upsert'],
+        ['UserSeeder', 'modified', '3f9a1c', '[high] truncate() on table users'],
+        ['ProductSeeder', 'new', 'a71e02', '[medium] insert() without upsert'],
     ];
 
     private const QUESTION = '2 seeders, 1 high risk will be run. Do you want to continue?';
@@ -159,14 +159,12 @@ class SeederMigrateCommandTest extends TestCase
                 'seeder' => 'UserSeeder',
                 'status' => SeederVersioningService::STATUS_MODIFIED,
                 'hash' => '3f9a1c' . str_repeat('0', 58),
-                'lines' => ['added' => 12, 'removed' => 3],
                 'risks' => [['level' => 'high', 'message' => 'truncate() on table users']],
             ],
             [
                 'seeder' => 'ProductSeeder',
                 'status' => SeederVersioningService::STATUS_NEW,
                 'hash' => 'a71e02' . str_repeat('0', 58),
-                'lines' => ['added' => 48, 'removed' => null],
                 'risks' => [['level' => 'medium', 'message' => 'insert() without upsert']],
             ],
             $this->upToDateStatus(),
@@ -183,7 +181,6 @@ class SeederMigrateCommandTest extends TestCase
             'seeder' => 'RoleSeeder',
             'status' => SeederVersioningService::STATUS_UP_TO_DATE,
             'hash' => '9c0b44' . str_repeat('0', 58),
-            'lines' => null,
             'risks' => [],
         ];
     }

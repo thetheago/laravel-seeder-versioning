@@ -163,43 +163,17 @@ class SeederVersioningServiceTest extends TestCase
         $this->assertTrue(Schema::hasTable('seeder_version_history'));
     }
 
-    public function test_runVersionedSeedersStoresTheSeederContent(): void
-    {
-        app(SeederVersioningService::class)->runSeederVersionMigration();
-        app(SeederVersioningService::class)->runVersionedSeeders(true);
-
-        $this->assertSame(
-            file_get_contents(__DIR__ . '/../Database/Seeders/UserSeeder.php'),
-            DB::table('seeder_versions')->where('seeder', 'UserSeeder')->value('content')
-        );
-    }
-
-    public function test_ensureSetupAddsContentColumnToExistingInstalls(): void
-    {
-        Artisan::call('migrate', [
-            '--path' => __DIR__ . '/../../database/migrations/2025_01_01_000000_create_seeder_versions_table.php',
-            '--realpath' => true,
-        ]);
-        $this->assertFalse(Schema::hasColumn('seeder_versions', 'content'));
-
-        File::partialMock()->shouldReceive('exists')->with(config_path('seeder-versioning.php'))->andReturn(true);
-        app(SeederVersioningService::class)->ensureSetup();
-
-        $this->assertTrue(Schema::hasColumn('seeder_versions', 'content'));
-    }
-
-    public function test_seederStatusesReturnsLinesAndRisksOfPendingSeeders(): void
+    public function test_seederStatusesReturnsRisksOfPendingSeeders(): void
     {
         $statuses = array_column(app(SeederVersioningService::class)->seederStatuses(), null, 'seeder');
 
-        $this->assertSame(['added' => 20, 'removed' => null], $statuses['UserSeeder']['lines']);
         $this->assertSame(
             [['level' => 'medium', 'message' => 'insert() without upsert']],
             $statuses['UserSeeder']['risks']
         );
     }
 
-    public function test_seederStatusesSkipsLinesAndRisksOfUpToDateSeeders(): void
+    public function test_seederStatusesSkipsRisksOfUpToDateSeeders(): void
     {
         $service = app(SeederVersioningService::class);
         $service->runSeederVersionMigration();
@@ -207,7 +181,6 @@ class SeederVersioningServiceTest extends TestCase
 
         $status = array_column($service->seederStatuses(), null, 'seeder')['UserSeeder'];
 
-        $this->assertNull($status['lines']);
         $this->assertSame([], $status['risks']);
     }
 

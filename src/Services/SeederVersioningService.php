@@ -18,7 +18,6 @@ class SeederVersioningService
 
     protected const VERSIONS_MIGRATION = '2025_01_01_000000_create_seeder_versions_table.php';
     protected const HISTORY_MIGRATION = '2025_01_02_000000_create_seeder_version_history_table.php';
-    protected const CONTENT_MIGRATION = '2025_01_03_000000_add_content_to_seeder_versions_table.php';
 
     protected string $table;
     protected string $historyTable;
@@ -58,18 +57,12 @@ class SeederVersioningService
             $this->output->writeln("<fg=yellow>[SeederVersioning] </>Creating table <fg=cyan>{$this->historyTable}</>...");
             $this->runMigration(self::HISTORY_MIGRATION);
         }
-
-        if (! Schema::hasColumn($this->table, 'content')) {
-            $this->output->writeln("<fg=yellow>[SeederVersioning] </>Adding column <fg=cyan>content</> to <fg=cyan>{$this->table}</>...");
-            $this->runMigration(self::CONTENT_MIGRATION);
-        }
     }
 
     public function runSeederVersionMigration(): void
     {
         $this->runMigration(self::VERSIONS_MIGRATION);
         $this->runMigration(self::HISTORY_MIGRATION);
-        $this->runMigration(self::CONTENT_MIGRATION);
     }
 
     protected function runMigration(string $migration): void
@@ -105,14 +98,11 @@ class SeederVersioningService
         $anySeederRunned = false;
 
         $existingSeeders = DB::table($this->table)->get()->keyBy('seeder');
-        // Installs that skipped ensureSetup() may not have the column yet.
-        $storeContent = Schema::hasColumn($this->table, 'content');
 
         foreach ($this->versionedFiles($files) as $file) {
             $seederName = $file->getFilenameWithoutExtension();
             $seeder = $this->resolveSeederClass($file);
             $hash = $this->calculateHash($file->getPathname());
-            $content = $storeContent ? ['content' => File::get($file->getPathname())] : [];
 
             $existing = $existingSeeders->get($seederName);
 
@@ -127,7 +117,7 @@ class SeederVersioningService
                     'seeder' => $seederName,
                     'hash' => $hash,
                     'ran_at' => now(),
-                ] + $content);
+                ]);
                 $this->recordHistory($seederName, $hash, null, $hashOnly);
 
                 $this->output->writeln("<fg=green> ✔ Seeder registered with hash:</> <fg=cyan>{$hash}</>");
@@ -146,7 +136,7 @@ class SeederVersioningService
                 DB::table($this->table)->where('seeder', $seederName)->update([
                     'hash' => $hash,
                     'ran_at' => now(),
-                ] + $content);
+                ]);
                 $this->recordHistory($seederName, $hash, $existing->hash, $hashOnly);
 
                 $this->output->writeln("<fg=green> ✔ Seeder updated with new hash:</> <fg=cyan>{$hash}</>");
@@ -161,14 +151,12 @@ class SeederVersioningService
     /**
      * Status of each versioned seeder, in execution order. Read-only: nothing is run or registered.
      *
-     * For new and modified seeders it also returns the changed lines (`null` when the previous
-     * content was not stored, e.g. registered before this column existed) and the risks found in the code.
+     * For new and modified seeders it also returns the risks found in their current code.
      *
      * @return array<int, array{
      *     seeder: string,
      *     status: string,
      *     hash: string,
-     *     lines: array{added: int, removed: int|null}|null,
      *     risks: array<int, array{level: string, message: string}>
      * }>
      * @throws RuntimeException
@@ -198,26 +186,15 @@ class SeederVersioningService
                 default => self::STATUS_UP_TO_DATE,
             };
 
-            $lines = null;
-            $risks = [];
-
-            if ($status !== self::STATUS_UP_TO_DATE) {
-                $content = File::get($file->getPathname());
-                $previous = $existing->content ?? null;
-
-                $lines = match (true) {
-                    $status === self::STATUS_NEW => ['added' => count(LineDiff::lines($content)), 'removed' => null],
-                    $previous !== null => LineDiff::count($previous, $content),
-                    default => null,
-                };
-                $risks = $this->riskAnalyzer->analyze($content);
-            }
+            // Only what is going to run is analyzed.
+            $risks = $status === self::STATUS_UP_TO_DATE
+                ? []
+                : $this->riskAnalyzer->analyze(File::get($file->getPathname()));
 
             $statuses[] = [
                 'seeder' => $seederName,
                 'status' => $status,
                 'hash' => $hash,
-                'lines' => $lines,
                 'risks' => $risks,
             ];
         }

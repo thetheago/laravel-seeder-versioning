@@ -56,8 +56,6 @@ class SeederVersioningServiceProvider extends ServiceProvider
                 database_path('migrations/' . date('Y_m_d_His') . '_create_seeder_versions_table.php'),
             __DIR__ . '/../database/migrations/2025_01_02_000000_create_seeder_version_history_table.php' =>
                 database_path('migrations/' . date('Y_m_d_His', time() + 1) . '_create_seeder_version_history_table.php'),
-            __DIR__ . '/../database/migrations/2025_01_03_000000_add_content_to_seeder_versions_table.php' =>
-                database_path('migrations/' . date('Y_m_d_His', time() + 2) . '_add_content_to_seeder_versions_table.php'),
         ], 'seeder-versioning');
     }
 }

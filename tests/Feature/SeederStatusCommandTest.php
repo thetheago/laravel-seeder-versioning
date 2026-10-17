@@ -10,7 +10,7 @@ use Thetheago\SeederVersioning\Tests\TestCase;
 
 class SeederStatusCommandTest extends TestCase
 {
-    private const HEADERS = ['Seeder', 'Status', 'Lines', 'Hash', 'Risks'];
+    private const HEADERS = ['Seeder', 'Status', 'Hash', 'Risks'];
     private const INSERT_RISK = '[medium] insert() without upsert';
 
     public function test_commandShouldListNewSeedersWithoutRunningThem(): void
@@ -20,8 +20,8 @@ class SeederStatusCommandTest extends TestCase
         $this->artisan('seed:status')
             ->expectsOutput('No seeders have been run yet.')
             ->expectsTable(self::HEADERS, [
-                ['ProductsSeeder', 'new', '+20', substr($hashes['ProductsSeeder'], 0, 6), self::INSERT_RISK],
-                ['UserSeeder', 'new', '+20', substr($hashes['UserSeeder'], 0, 6), self::INSERT_RISK],
+                ['ProductsSeeder', 'new', substr($hashes['ProductsSeeder'], 0, 6), self::INSERT_RISK],
+                ['UserSeeder', 'new', substr($hashes['UserSeeder'], 0, 6), self::INSERT_RISK],
             ])
             ->expectsOutputToContain('2 seeders pending.')
             ->assertExitCode(0);
@@ -57,7 +57,7 @@ class SeederStatusCommandTest extends TestCase
 
         $this->artisan('seed:status')
             ->expectsTable(self::HEADERS, [
-                ['UserSeeder', 'modified', '+1 -1', substr($this->currentHashes()['UserSeeder'], 0, 6), self::INSERT_RISK],
+                ['UserSeeder', 'modified', substr($this->currentHashes()['UserSeeder'], 0, 6), self::INSERT_RISK],
             ])
             ->expectsOutputToContain('1 seeder pending.')
             ->assertExitCode(0);
@@ -74,8 +74,8 @@ class SeederStatusCommandTest extends TestCase
 
         $this->artisan('seed:status', ['--all' => true])
             ->expectsTable(self::HEADERS, [
-                ['ProductsSeeder', 'up to date', '-', substr($hashes['ProductsSeeder'], 0, 6), '-'],
-                ['UserSeeder', 'modified', '+1 -1', substr($hashes['UserSeeder'], 0, 6), self::INSERT_RISK],
+                ['ProductsSeeder', 'up to date', substr($hashes['ProductsSeeder'], 0, 6), '-'],
+                ['UserSeeder', 'modified', substr($hashes['UserSeeder'], 0, 6), self::INSERT_RISK],
             ])
             ->expectsOutputToContain('1 seeder pending.')
             ->assertExitCode(0);
@@ -90,32 +90,12 @@ class SeederStatusCommandTest extends TestCase
             ->assertExitCode(Command::FAILURE);
     }
 
-    public function test_commandShouldShowUnknownLinesWhenPreviousContentWasNotStored(): void
-    {
-        $service = app(SeederVersioningService::class);
-        $service->runSeederVersionMigration();
-        $service->runVersionedSeeders(true);
-
-        DB::table('seeder_versions')->where('seeder', 'UserSeeder')->update(['hash' => str_repeat('0', 64), 'content' => null]);
-
-        $this->artisan('seed:status')
-            ->expectsTable(self::HEADERS, [
-                ['UserSeeder', 'modified', '?', substr($this->currentHashes()['UserSeeder'], 0, 6), self::INSERT_RISK],
-            ])
-            ->assertExitCode(0);
-    }
-
     /**
-     * Stores an older UserSeeder (one line different) as the last registered version.
+     * Makes UserSeeder look changed since its last run.
      */
     private function simulatePreviousUserSeederVersion(): void
     {
-        $content = DB::table('seeder_versions')->where('seeder', 'UserSeeder')->value('content');
-
-        DB::table('seeder_versions')->where('seeder', 'UserSeeder')->update([
-            'hash' => str_repeat('0', 64),
-            'content' => str_replace('spongebob@gmail.com', 'old@example.com', $content),
-        ]);
+        DB::table('seeder_versions')->where('seeder', 'UserSeeder')->update(['hash' => str_repeat('0', 64)]);
     }
 
     /**
