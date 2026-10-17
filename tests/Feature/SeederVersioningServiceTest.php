@@ -2,8 +2,11 @@
 
 namespace Thetheago\SeederVersioning\Tests\Feature;
 
+use Illuminate\Database\Events\MigrationsStarted;
+use Illuminate\Database\Events\NoPendingMigrations;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Mockery;
@@ -158,6 +161,27 @@ class SeederVersioningServiceTest extends TestCase
         app(SeederVersioningService::class)->ensureSetup();
 
         $this->assertTrue(Schema::hasTable('seeder_version_history'));
+    }
+
+    public function test_ensureSetupUsesTheConfiguredTableName(): void
+    {
+        config()->set('seeder-versioning.table', 'custom_seeder_versions');
+        $this->app->forgetInstance(SeederVersioningService::class);
+        File::partialMock()->shouldReceive('exists')->with(config_path('seeder-versioning.php'))->andReturn(true);
+
+        app(SeederVersioningService::class)->ensureSetup();
+
+        $this->assertTrue(Schema::hasTable('custom_seeder_versions'));
+        $this->assertFalse(Schema::hasTable('seeder_versions'));
+
+        $migrateCalls = 0;
+        Event::listen([MigrationsStarted::class, NoPendingMigrations::class], function () use (&$migrateCalls) {
+            $migrateCalls++;
+        });
+
+        app(SeederVersioningService::class)->ensureSetup();
+
+        $this->assertSame(0, $migrateCalls, 'ensureSetup() ran migrate again although the table exists.');
     }
 
     public function test_databaseSeederIsExcludedByDefault(): void
