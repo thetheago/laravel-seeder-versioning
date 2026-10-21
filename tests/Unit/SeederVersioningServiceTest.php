@@ -17,14 +17,6 @@ class SeederVersioningServiceTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_ensureSetupTrhwoExceptionIfWasNotConfigFIle(): void
-    {
-        File::shouldReceive('exists')->andReturn(false);
-
-        $this->expectException(\RuntimeException::class);
-        SeederVersioning::ensureSetup();
-    }
-
     public function test_ensureSetupCreateSeederVersioningTable(): void
     {
         File::shouldReceive('exists')->andReturn(true);

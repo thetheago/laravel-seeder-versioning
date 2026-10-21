@@ -35,19 +35,10 @@ class SeederVersioningService
     }
 
     /**
-     * @throws RuntimeException
+     * The config file does not need to be published: mergeConfigFrom() provides the defaults.
      */
     public function ensureSetup(): void
     {
-        $configPath = config_path('seeder-versioning.php');
-
-        if (! File::exists($configPath)) {
-            throw new RuntimeException(
-                "Config file not found {$configPath}. " .
-                "Run: php artisan vendor:publish --tag=seeder-versioning"
-            );
-        }
-
         if (! Schema::hasTable($this->table)) {
             $this->output->writeln("<fg=yellow>[SeederVersioning] </>Creating table <fg=cyan>{$this->table}</>...");
             $this->runMigration(self::VERSIONS_MIGRATION);
