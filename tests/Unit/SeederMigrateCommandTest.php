@@ -4,7 +4,9 @@ namespace Thetheago\SeederVersioning\Tests\Unit;
 
 use Mockery;
 use Mockery\MockInterface;
+use RuntimeException;
 use Symfony\Component\Console\Command\Command;
+use Thetheago\SeederVersioning\Exceptions\SeederFailedException;
 use Thetheago\SeederVersioning\Services\SeederVersioningService;
 use Thetheago\SeederVersioning\Tests\TestCase;
 
@@ -30,6 +32,20 @@ class SeederMigrateCommandTest extends TestCase
             ->expectsOutput('Running seeders...')
             ->expectsOutput('Done.')
             ->assertExitCode(0);
+    }
+
+    public function test_commandShouldReportFailingSeederAndExitWithFailure(): void
+    {
+        $service = $this->mockService();
+        $service->shouldReceive('runVersionedSeeders')->once()->with(false)
+            ->andThrow(new SeederFailedException('UserSeeder', new RuntimeException('Something went wrong')));
+
+        $this->artisan('seed:migrate')
+            ->expectsConfirmation(self::QUESTION, 'yes')
+            ->expectsOutputToContain('Seeder UserSeeder failed: Something went wrong')
+            ->expectsOutputToContain('Changes made by UserSeeder were rolled back.')
+            ->doesntExpectOutput('Done.')
+            ->assertExitCode(Command::FAILURE);
     }
 
     public function test_commandShouldNotRunSeedersWhenConfirmationIsDenied(): void

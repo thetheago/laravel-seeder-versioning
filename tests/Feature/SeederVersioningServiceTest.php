@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Mockery;
+use Thetheago\SeederVersioning\Exceptions\SeederFailedException;
 use Thetheago\SeederVersioning\Tests\Database\Seeders\ProductsSeeder;
 use Thetheago\SeederVersioning\Services\SeederRunner;
 use Thetheago\SeederVersioning\Services\SeederVersioningService;
@@ -161,6 +162,43 @@ class SeederVersioningServiceTest extends TestCase
         app(SeederVersioningService::class)->ensureSetup();
 
         $this->assertTrue(Schema::hasTable('seeder_version_history'));
+    }
+
+    public function test_failingSeederIsRolledBackAndNotRegistered(): void
+    {
+        config()->set('seeder-versioning.path', __DIR__ . '/../Database/FailingSeeders');
+        $service = app(SeederVersioningService::class);
+        $service->runSeederVersionMigration();
+
+        try {
+            $service->runVersionedSeeders();
+            $this->fail('Expected SeederFailedException.');
+        } catch (SeederFailedException $e) {
+            $this->assertSame('PartialSeeder', $e->seeder);
+            $this->assertSame('Something went wrong', $e->getPrevious()->getMessage());
+        }
+
+        $this->assertDatabaseMissing('users', ['email' => 'partial@example.com']);
+        $this->assertDatabaseMissing('seeder_versions', ['seeder' => 'PartialSeeder']);
+        $this->assertDatabaseMissing('seeder_version_history', ['seeder' => 'PartialSeeder']);
+    }
+
+    public function test_failingSeederStopsTheRunAndKeepsEarlierSeeders(): void
+    {
+        $service = app(SeederVersioningService::class);
+        $service->runSeederVersionMigration();
+        Schema::drop('users');
+
+        $this->expectException(SeederFailedException::class);
+        $this->expectExceptionMessage('Seeder UserSeeder failed');
+
+        try {
+            $service->runVersionedSeeders();
+        } finally {
+            $this->assertDatabaseHas('seeder_versions', ['seeder' => 'ProductsSeeder']);
+            $this->assertDatabaseHas('products', ['name' => 'coke']);
+            $this->assertDatabaseMissing('seeder_versions', ['seeder' => 'UserSeeder']);
+        }
     }
 
     public function test_seederStatusesReturnsRisksOfPendingSeeders(): void

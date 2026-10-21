@@ -20,6 +20,7 @@ All notable changes to this project are documented here. Format based on [Keep a
 
 ### Fixed
 
+- A failing seeder no longer leaves partial data or aborts without a report: each seeder runs in a transaction with its hash registration, a failure rolls back that seeder, keeps it unregistered so it runs again next time, and `seed:migrate` reports which seeder failed and exits with `1` (#8).
 - `ensureSetup()` checks the configured `table` name. With a custom name, `seed:migrate` tried to create the table again on every run and failed with "table already exists" (#5).
 - `DatabaseSeeder` is no longer versioned and run, so the seeders it calls no longer run twice (#3).
 - `seed:migrate` asks for confirmation in production, like `db:seed` (#6). Deploys that run it in production without a terminal must now pass `--force`, otherwise the command is cancelled and exits with `1`.

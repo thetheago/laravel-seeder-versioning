@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 use SplFileInfo;
+use Thetheago\SeederVersioning\Exceptions\SeederFailedException;
+use Throwable;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
 class SeederVersioningService
@@ -78,6 +80,7 @@ class SeederVersioningService
 
     /**
      * @param bool $hashOnly If true, only generates and fills the table without running the seeders
+     * @throws SeederFailedException
      */
     public function runVersionedSeeders(bool $hashOnly = false): void
     {
@@ -109,16 +112,17 @@ class SeederVersioningService
             if (!$existing) {
                 if (!$hashOnly) {
                     $this->output->writeln("<fg=gray> └─ Running new seeder... </> <fg=green>{$seederName}</>");
-                    $this->seederRunner::run($seeder);
-                    $anySeederRunned = true;
                 }
 
-                DB::table($this->table)->insert([
-                    'seeder' => $seederName,
-                    'hash' => $hash,
-                    'ran_at' => now(),
-                ]);
-                $this->recordHistory($seederName, $hash, null, $hashOnly);
+                $this->runAndRegister($seederName, $seeder, $hashOnly, function () use ($seederName, $hash, $hashOnly) {
+                    DB::table($this->table)->insert([
+                        'seeder' => $seederName,
+                        'hash' => $hash,
+                        'ran_at' => now(),
+                    ]);
+                    $this->recordHistory($seederName, $hash, null, $hashOnly);
+                });
+                $anySeederRunned = $anySeederRunned || ! $hashOnly;
 
                 $this->output->writeln("<fg=green> ✔ Seeder registered with hash:</> <fg=cyan>{$hash}</>");
                 continue;
@@ -129,15 +133,16 @@ class SeederVersioningService
 
                 if (!$hashOnly) {
                     $this->output->writeln("<fg=gray> └─ Re-running updated seeder...</>");
-                    $this->seederRunner::run($seeder);
-                    $anySeederRunned = true;
                 }
 
-                DB::table($this->table)->where('seeder', $seederName)->update([
-                    'hash' => $hash,
-                    'ran_at' => now(),
-                ]);
-                $this->recordHistory($seederName, $hash, $existing->hash, $hashOnly);
+                $this->runAndRegister($seederName, $seeder, $hashOnly, function () use ($seederName, $hash, $existing, $hashOnly) {
+                    DB::table($this->table)->where('seeder', $seederName)->update([
+                        'hash' => $hash,
+                        'ran_at' => now(),
+                    ]);
+                    $this->recordHistory($seederName, $hash, $existing->hash, $hashOnly);
+                });
+                $anySeederRunned = $anySeederRunned || ! $hashOnly;
 
                 $this->output->writeln("<fg=green> ✔ Seeder updated with new hash:</> <fg=cyan>{$hash}</>");
             }
@@ -145,6 +150,28 @@ class SeederVersioningService
 
         if (! $anySeederRunned && ! $hashOnly) {
             $this->output->writeln("<fg=yellow>[SeederVersioning] </>No new or modified seeders to execute.");
+        }
+    }
+
+    /**
+     * Runs a seeder and registers its hash in one transaction. If the seeder fails, its changes are
+     * rolled back and its hash is not registered, so it runs again next time. The run stops there,
+     * because the following seeders may depend on it.
+     *
+     * @throws SeederFailedException
+     */
+    protected function runAndRegister(string $seederName, string $seeder, bool $hashOnly, callable $register): void
+    {
+        try {
+            DB::transaction(function () use ($seeder, $hashOnly, $register) {
+                if (! $hashOnly) {
+                    $this->seederRunner::run($seeder);
+                }
+
+                $register();
+            });
+        } catch (Throwable $e) {
+            throw new SeederFailedException($seederName, $e);
         }
     }
 
