@@ -5,6 +5,7 @@ namespace Thetheago\SeederVersioning\Command;
 use Illuminate\Console\Command;
 use RuntimeException;
 use Thetheago\SeederVersioning\Command\Concerns\RendersSeederPreview;
+use Thetheago\SeederVersioning\Services\SeederRunner;
 use Thetheago\SeederVersioning\Services\SeederVersioningService;
 
 class SeederMigrateCommand extends Command
@@ -66,6 +67,7 @@ class SeederMigrateCommand extends Command
             $this->newLine();
         }
 
+        SeederRunner::setCommand($this);
         $this->service->runVersionedSeeders($hashOnly);
         $this->newLine();
         $this->info('Done.');

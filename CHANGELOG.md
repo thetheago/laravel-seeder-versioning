@@ -20,6 +20,7 @@ All notable changes to this project are documented here. Format based on [Keep a
 
 ### Fixed
 
+- Seeders run like `db:seed`: with the container and the command set, so `$this->call()`, `$this->command` and dependencies injected into `run()` work (#4).
 - `ensureSetup()` checks the configured `table` name. With a custom name, `seed:migrate` tried to create the table again on every run and failed with "table already exists" (#5).
 - `DatabaseSeeder` is no longer versioned and run, so the seeders it calls no longer run twice (#3).
 - `seed:migrate` asks for confirmation in production, like `db:seed` (#6). Deploys that run it in production without a terminal must now pass `--force`, otherwise the command is cancelled and exits with `1`.
