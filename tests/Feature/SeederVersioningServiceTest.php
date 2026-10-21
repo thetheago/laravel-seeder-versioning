@@ -7,7 +7,6 @@ use Illuminate\Database\Events\NoPendingMigrations;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Mockery;
 use Thetheago\SeederVersioning\Tests\Database\Seeders\ProductsSeeder;
@@ -157,9 +156,18 @@ class SeederVersioningServiceTest extends TestCase
         $this->assertTrue(Schema::hasTable('seeder_versions'));
         $this->assertFalse(Schema::hasTable('seeder_version_history'));
 
-        File::partialMock()->shouldReceive('exists')->with(config_path('seeder-versioning.php'))->andReturn(true);
         app(SeederVersioningService::class)->ensureSetup();
 
+        $this->assertTrue(Schema::hasTable('seeder_version_history'));
+    }
+
+    public function test_ensureSetupWorksWithoutPublishedConfig(): void
+    {
+        $this->assertFileDoesNotExist(config_path('seeder-versioning.php'));
+
+        app(SeederVersioningService::class)->ensureSetup();
+
+        $this->assertTrue(Schema::hasTable('seeder_versions'));
         $this->assertTrue(Schema::hasTable('seeder_version_history'));
     }
 
@@ -188,7 +196,6 @@ class SeederVersioningServiceTest extends TestCase
     {
         config()->set('seeder-versioning.table', 'custom_seeder_versions');
         $this->app->forgetInstance(SeederVersioningService::class);
-        File::partialMock()->shouldReceive('exists')->with(config_path('seeder-versioning.php'))->andReturn(true);
 
         app(SeederVersioningService::class)->ensureSetup();
 
