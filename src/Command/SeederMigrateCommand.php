@@ -5,6 +5,7 @@ namespace Thetheago\SeederVersioning\Command;
 use Illuminate\Console\Command;
 use RuntimeException;
 use Thetheago\SeederVersioning\Command\Concerns\RendersSeederPreview;
+use Thetheago\SeederVersioning\Exceptions\SeederFailedException;
 use Thetheago\SeederVersioning\Services\SeederVersioningService;
 
 class SeederMigrateCommand extends Command
@@ -66,7 +67,15 @@ class SeederMigrateCommand extends Command
             $this->newLine();
         }
 
-        $this->service->runVersionedSeeders($hashOnly);
+        try {
+            $this->service->runVersionedSeeders($hashOnly);
+        } catch (SeederFailedException $e) {
+            $this->newLine();
+            $this->components->error($e->getMessage());
+            $this->line("Changes made by {$e->seeder} were rolled back. Seeders after it were not run; fix it and run seed:migrate again.");
+            return self::FAILURE;
+        }
+
         $this->newLine();
         $this->info('Done.');
         return self::SUCCESS;
